@@ -1,0 +1,564 @@
+# Trading Engine POC - Implementation Tasks
+
+**Version**: 1.0
+**Start Date**: 2026-03-12
+**Target Completion**: 5 weeks
+**Status**: 🟡 In Progress
+
+---
+
+## 📊 Progress Overview
+
+| Phase | Tasks | Completed | Progress | Status |
+|-------|-------|-----------|----------|--------|
+| **Phase 1: Foundation** | 7 | 6 | 86% | ✅ Near Complete |
+| **Phase 2: Auth & Account** | 14 | 0 | 0% | ⏳ Not Started |
+| **Phase 3: Order Management** | 12 | 0 | 0% | ⏳ Not Started |
+| **Phase 4: Matching Engine** | 15 | 0 | 0% | ⏳ Not Started |
+| **Phase 5: Market Data** | 8 | 0 | 0% | ⏳ Not Started |
+| **Phase 6: WebSocket** | 6 | 0 | 0% | ⏳ Not Started |
+| **Phase 7: Testing & Docs** | 8 | 0 | 0% | ⏳ Not Started |
+| **TOTAL** | **70** | **6** | **9%** | 🟡 In Progress |
+
+---
+
+## 🚀 Phase 1: Foundation (Week 1)
+
+**Goal**: Set up project infrastructure
+
+**Duration**: 3-4 days
+
+### Infrastructure Setup
+
+- [x] Project setup (NestJS in `apps/api`)
+- [x] Docker Compose configuration
+  - [x] PostgreSQL 16+ service
+  - [x] Redis 7.x service
+  - [x] Volume mounts for data persistence
+  - [x] Health checks
+- [x] Environment variables setup
+  - [x] `.env.example` template
+  - [x] `.env` for local development
+  - [ ] Environment validation (class-validator)
+
+### Database Setup
+
+- [x] Database schema design finalized
+- [x] Migration scripts
+  - [x] `001_create_users_table.sql`
+  - [x] `002_create_accounts_table.sql`
+  - [x] `003_create_orders_table.sql`
+  - [x] `004_create_trades_table.sql`
+  - [x] `005_create_transactions_table.sql`
+  - [x] `006_create_tickers_table.sql`
+  - [x] `007_create_candles_tables.sql`
+- [x] Database seeding
+  - [x] `001_test_users.sql` (4 users including admin)
+  - [x] `002_test_accounts.sql` (accounts + balances)
+  - [x] `003_initial_tickers.sql` (4 trading pairs)
+- [x] Migration runner script (`run-migrations.ts`)
+- [x] Seed runner script (`run-seeds.ts`)
+
+### Configuration
+
+- [x] Winston logger setup
+  - [x] Console transport (development)
+  - [x] File transport (logs directory)
+  - [x] Log levels configuration
+  - [x] Structured JSON logging
+  - [x] Daily rotate file (error, combined, debug)
+  - [x] Custom methods (logTrade, logOrder, logPerformance)
+- [x] Health check endpoint (`/health`)
+  - [x] `/health` - Full health check (DB + Redis)
+  - [x] `/health/live` - Liveness probe
+  - [x] `/health/ready` - Readiness probe
+  - [x] PostgreSQL health indicator
+  - [x] Redis health indicator
+- [ ] Swagger/OpenAPI setup (optional - can be done later)
+
+### Testing
+
+- [ ] Verify Docker containers running
+- [ ] Test database connection
+- [ ] Test Redis connection
+- [ ] Health check endpoint returns 200
+
+---
+
+## 🔐 Phase 2: Auth & Account (Week 1-2)
+
+**Goal**: User management working
+
+**Duration**: 5-6 days
+
+### Auth Module
+
+- [ ] Generate Auth module (`nest g module auth`)
+- [ ] Generate Auth service (`nest g service auth`)
+- [ ] Generate Auth controller (`nest g controller auth`)
+- [ ] User entity
+  - [ ] Define user schema (username, email, password_hash)
+  - [ ] TypeORM/raw SQL implementation
+- [ ] Registration endpoint (`POST /auth/register`)
+  - [ ] Input validation (class-validator)
+  - [ ] Password hashing (bcrypt, 12 rounds)
+  - [ ] Email uniqueness check
+  - [ ] Username uniqueness check
+  - [ ] Error handling (409 Conflict, 400 Bad Request)
+- [ ] Login endpoint (`POST /auth/login`)
+  - [ ] Credential validation
+  - [ ] JWT token generation (HS256, 24h expiry)
+  - [ ] Refresh token (Redis, 7 days TTL)
+  - [ ] Return access_token + refresh_token
+- [ ] JWT Strategy (Passport)
+  - [ ] JWT validation middleware
+  - [ ] Extract user from token
+- [ ] Auth Guards
+  - [ ] JwtAuthGuard (protect routes)
+  - [ ] RolesGuard (role-based access)
+
+### Account Module
+
+- [ ] Generate Account module
+- [ ] Generate Account service
+- [ ] Generate Account controller
+- [ ] Account entities
+  - [ ] Account entity (main account)
+  - [ ] AccountCoin entity (coin balances)
+  - [ ] AccountCash entity (cash balances)
+  - [ ] Transaction entity (audit trail)
+  - [ ] LockRecord entity (balance locks)
+- [ ] Account creation endpoint (`POST /account`)
+  - [ ] Auto-create after registration
+  - [ ] Initialize coin balances (BTC, ETH = 0)
+  - [ ] Initialize cash balance (USD = 0)
+  - [ ] Set default KYC level (1)
+  - [ ] Set trading_status = ACTIVE
+- [ ] Balance query endpoint (`GET /account/balance`)
+  - [ ] Return coins + cash
+  - [ ] Available vs locked breakdown
+- [ ] Balance Service
+  - [ ] `lockCash()` - Lock cash for order
+  - [ ] `lockCoin()` - Lock coin for order
+  - [ ] `unlockCash()` - Unlock after cancel/settlement
+  - [ ] `unlockCoin()` - Unlock after cancel/settlement
+  - [ ] Pessimistic locking (FOR UPDATE)
+- [ ] Deposit endpoint (`POST /account/deposit`)
+  - [ ] Validate amount > 0
+  - [ ] Update balance atomically
+  - [ ] Create transaction record
+- [ ] Withdrawal endpoint (`POST /account/withdraw`)
+  - [ ] Validate sufficient balance
+  - [ ] Update balance atomically
+  - [ ] Create transaction record
+- [ ] Transaction history endpoint (`GET /account/transactions`)
+  - [ ] Pagination support
+  - [ ] Filter by type (DEPOSIT, WITHDRAW, TRADE)
+
+### Testing
+
+- [ ] Manual test: Register user
+- [ ] Manual test: Login & get JWT
+- [ ] Manual test: Create account
+- [ ] Manual test: Deposit funds
+- [ ] Manual test: Query balance
+
+---
+
+## 📦 Phase 3: Order Management (Week 2-3)
+
+**Goal**: Order placement & Redis order book working
+
+**Duration**: 5-6 days
+
+### Order Module Setup
+
+- [ ] Generate Order module
+- [ ] Generate Order service
+- [ ] Generate Order controller
+- [ ] Order entities
+  - [ ] Order entity (matching_order table)
+  - [ ] Trade entity (matching_trade table)
+  - [ ] OrderHistory entity
+
+### Order Service
+
+- [ ] Place LIMIT Order (`POST /orders`)
+  - [ ] Validate input (DTO with class-validator)
+  - [ ] Check pair trading status
+  - [ ] Check account trading status
+  - [ ] Calculate required balance + fees
+  - [ ] Call BalanceService.lockCash/lockCoin
+  - [ ] Generate order ID (snowflake/bigserial)
+  - [ ] INSERT into matching_order (status=PENDING)
+  - [ ] Add to Redis order book (ZADD)
+  - [ ] Push to BullMQ queue (priority=10)
+  - [ ] Return 202 Accepted
+- [ ] Place MARKET Order (`POST /orders`)
+  - [ ] Same validation as LIMIT
+  - [ ] Calculate worst-case estimate (price × 1.2)
+  - [ ] Lock balance with slippage buffer
+  - [ ] INSERT with type=MARKET, price=NULL
+  - [ ] Push to BullMQ queue (priority=1)
+  - [ ] Return 202 Accepted
+- [ ] Get Order by ID (`GET /orders/:id`)
+  - [ ] Query from database
+  - [ ] Verify ownership (user can only see own orders)
+- [ ] Get Orders list (`GET /orders`)
+  - [ ] Filter by status (PENDING, COMPLETED, etc.)
+  - [ ] Pagination (limit, offset)
+  - [ ] Sort by placed_at DESC
+- [ ] Cancel Order (`DELETE /orders/:id`)
+  - [ ] Check order status (must be PENDING or PARTLY_FILLED)
+  - [ ] Remove from Redis order book (ZREM)
+  - [ ] Calculate remaining balance to unlock
+  - [ ] Call BalanceService.unlock
+  - [ ] UPDATE order status = CANCELED
+  - [ ] Return 200 OK
+
+### Orderbook Service (Redis)
+
+- [ ] `addOrder(order)` - ZADD to sorted set
+  - [ ] BUY: ZADD orderbook:{pair}:bid -price order_id
+  - [ ] SELL: ZADD orderbook:{pair}:ask price order_id
+- [ ] `removeOrder(orderId, pair, isBid)` - ZREM from sorted set
+- [ ] `getBestBid(pair)` - ZRANGE 0 0 (highest bid)
+- [ ] `getBestAsk(pair)` - ZRANGE 0 0 (lowest ask)
+- [ ] `getAllBids(pair)` - ZRANGE 0 -1 (all bids)
+- [ ] `getAllAsks(pair)` - ZRANGE 0 -1 (all asks)
+- [ ] `getOrderBookDepth(pair, levels)` - Top N levels
+
+### Testing
+
+- [ ] Manual test: Place LIMIT order (verify locked balance)
+- [ ] Manual test: Place MARKET order
+- [ ] Manual test: Query order by ID
+- [ ] Manual test: Cancel order (verify unlock)
+- [ ] Manual test: Check Redis order book (redis-cli)
+
+---
+
+## ⚙️ Phase 4: Matching Engine (Week 3-4)
+
+**Goal**: Async matching working
+
+**Duration**: 7-8 days
+
+### BullMQ Setup
+
+- [ ] Install dependencies (`bullmq`, `ioredis`)
+- [ ] BullMQ configuration
+  - [ ] Queue connection (Redis)
+  - [ ] Default job options (retry: 3, backoff)
+  - [ ] Priority queue enabled
+- [ ] Create OrderMatchingQueue
+- [ ] Create MatchingWorker
+
+### Matching Processor
+
+- [ ] Generate MatchingProcessor
+- [ ] `@Process('processOrder')` handler
+  - [ ] Fetch order from DB
+  - [ ] Validate order status (PENDING or PARTLY_FILLED)
+  - [ ] Determine order type (LIMIT or MARKET)
+  - [ ] Call matching logic
+  - [ ] Handle MARKET order insufficient liquidity
+  - [ ] Update order status
+  - [ ] Log execution time
+- [ ] Matching algorithm (LIMIT orders)
+  - [ ] Get opposing orders from Redis
+  - [ ] Check price compatibility
+  - [ ] Loop through matches
+  - [ ] Calculate match quantity (min of remaining)
+  - [ ] Create trade record
+  - [ ] Update order quantities
+  - [ ] Break when fully filled
+- [ ] Matching algorithm (MARKET orders)
+  - [ ] Get ALL opposing orders
+  - [ ] Loop through all price levels
+  - [ ] Match until quantity exhausted
+  - [ ] Handle insufficient liquidity
+  - [ ] Mark as PARTLY_FILLED if needed
+
+### Settlement Service
+
+- [ ] Generate SettlementService
+- [ ] `settleTrade(trade)` main function
+  - [ ] Start SERIALIZABLE transaction
+  - [ ] Lock both account rows (FOR UPDATE)
+  - [ ] Validate account statuses (ACTIVE)
+  - [ ] Transfer coins to buyer
+  - [ ] Transfer cash to seller (minus fees)
+  - [ ] Deduct fees from locked balances
+  - [ ] Unlock remaining balances
+  - [ ] Create transaction records (audit trail)
+  - [ ] Update order status (COMPLETED or PARTLY_FILLED)
+  - [ ] Update trade status (CONFIRMED)
+  - [ ] COMMIT transaction
+  - [ ] Publish events (Redis pub/sub)
+- [ ] Error handling
+  - [ ] ROLLBACK on any error
+  - [ ] Mark trade as FAILED
+  - [ ] Log error details
+  - [ ] Maintain lock records for manual cleanup
+- [ ] Idempotency check
+  - [ ] Check if trade already settled
+  - [ ] Return early if CONFIRMED
+
+### Testing
+
+- [ ] Unit test: Matching algorithm (price-time priority)
+- [ ] Unit test: Partial fills
+- [ ] Unit test: Multiple matches
+- [ ] Unit test: Price incompatibility
+- [ ] Unit test: Settlement success
+- [ ] Unit test: Settlement rollback
+- [ ] Manual test: Place 2 matching orders
+- [ ] Manual test: Verify trade executed
+- [ ] Manual test: Verify balances updated
+- [ ] Manual test: Check transaction logs
+
+---
+
+## 📈 Phase 5: Market Data (Week 4)
+
+**Goal**: Ticker & candlestick data
+
+**Duration**: 2-3 days
+
+### Ticker Module
+
+- [ ] Generate Ticker module
+- [ ] Generate Ticker service
+- [ ] Generate Ticker controller
+- [ ] Ticker entity (ticker table)
+- [ ] Update ticker on trade
+  - [ ] Subscribe to trade.executed events
+  - [ ] Calculate 24h stats (open, high, low, volume)
+  - [ ] UPDATE or INSERT ticker data
+  - [ ] Cache in Redis (TTL: 60s)
+- [ ] Get ticker endpoint (`GET /ticker/:pair`)
+  - [ ] Check Redis cache first
+  - [ ] Fallback to database
+  - [ ] Return ticker data
+- [ ] Get all tickers endpoint (`GET /ticker`)
+  - [ ] Return all active pairs
+  - [ ] Include last price, volume, change%
+
+### Candle Service
+
+- [ ] Generate Candle service
+- [ ] Candle entities (candle_1m, candle_5m, candle_1h, candle_1d)
+- [ ] Update candles on trade
+  - [ ] Subscribe to trade.executed events
+  - [ ] Determine candle timeframe
+  - [ ] UPSERT candle data (open, high, low, close, volume)
+  - [ ] Mark candle as closed when period ends
+- [ ] Get candles endpoint (`GET /candles/:pair/:timeframe`)
+  - [ ] Validate timeframe (1m, 5m, 1h, 1d)
+  - [ ] Query candles with limit
+  - [ ] Sort by open_time DESC
+  - [ ] Return OHLCV data
+
+### Testing
+
+- [ ] Manual test: Execute trade
+- [ ] Manual test: Query ticker (verify price updated)
+- [ ] Manual test: Query candles
+- [ ] Verify ticker cache in Redis
+
+---
+
+## 🔌 Phase 6: WebSocket (Week 4-5)
+
+**Goal**: Real-time notifications
+
+**Duration**: 2-3 days
+
+### WebSocket Setup
+
+- [ ] Install dependencies (`@nestjs/websockets`, `socket.io`)
+- [ ] Install EventEmitter2 (`@nestjs/event-emitter`)
+- [ ] Configure EventEmitter2 module
+- [ ] Generate WebSocket module
+- [ ] Generate OrderGateway
+- [ ] Generate TickerGateway
+
+### Order Gateway
+
+- [ ] `@WebSocketGateway` decorator (namespace: '/orders')
+- [ ] CORS configuration
+- [ ] Connection handler
+  - [ ] Verify JWT token
+  - [ ] Extract user from token
+  - [ ] Join user-specific room
+- [ ] Disconnect handler
+- [ ] Subscribe to pair events
+  - [ ] `subscribe:pair` message handler
+  - [ ] Join pair-specific room
+- [ ] Event subscribers (EventEmitter2)
+  - [ ] Subscribe to `order.matched` event
+  - [ ] Subscribe to `trade.executed` event
+  - [ ] Subscribe to `order.filled` event
+  - [ ] Subscribe to `order.cancelled` event
+- [ ] Emit events to clients
+  - [ ] Emit to user room (private events)
+  - [ ] Emit to pair room (public events)
+
+### Ticker Gateway
+
+- [ ] `@WebSocketGateway` decorator (namespace: '/ticker')
+- [ ] Connection handler (no auth required)
+- [ ] Subscribe to ticker events
+  - [ ] Subscribe to `ticker.update` event
+- [ ] Emit ticker updates
+  - [ ] Broadcast to all connected clients
+  - [ ] Include pair, price, volume, change%
+
+### Testing
+
+- [ ] Manual test: Connect to WebSocket (wscat or Postman)
+- [ ] Manual test: Subscribe to pair
+- [ ] Manual test: Place order, verify WebSocket event
+- [ ] Manual test: Execute trade, verify WebSocket event
+- [ ] Manual test: Ticker updates received
+
+---
+
+## ✅ Phase 7: Testing & Documentation (Week 5)
+
+**Goal**: Production-ready
+
+**Duration**: 3-4 days
+
+### Unit Tests
+
+- [ ] Matching algorithm tests
+  - [ ] Test price-time priority
+  - [ ] Test partial fills
+  - [ ] Test multiple matches
+  - [ ] Test MARKET order execution
+- [ ] Settlement service tests
+  - [ ] Test successful settlement
+  - [ ] Test rollback scenarios
+  - [ ] Test idempotency
+  - [ ] Test account frozen during settlement
+- [ ] Balance service tests
+  - [ ] Test lock/unlock operations
+  - [ ] Test concurrent operations
+  - [ ] Test insufficient balance
+
+### Integration Tests (Manual)
+
+- [ ] Happy path: User registration → Login → Deposit → Order → Match → Settlement
+- [ ] LIMIT order flow
+- [ ] MARKET order flow
+- [ ] Partial fill scenario
+- [ ] Order cancellation
+- [ ] Insufficient balance error
+- [ ] Settlement failure scenario
+
+### API Documentation
+
+- [ ] Swagger/OpenAPI documentation complete
+- [ ] All endpoints documented
+- [ ] Request/response examples
+- [ ] Error codes documented
+
+### Postman Collection
+
+- [ ] Create Postman collection
+- [ ] Auth endpoints (register, login)
+- [ ] Account endpoints (balance, deposit, withdraw)
+- [ ] Order endpoints (place, cancel, query)
+- [ ] Ticker endpoints
+- [ ] Environment variables setup
+
+### Performance Testing
+
+- [ ] Test order placement latency (< 100ms)
+- [ ] Test matching latency (< 50ms)
+- [ ] Test settlement latency (< 200ms)
+- [ ] Test concurrent orders (10+ simultaneous)
+
+### Deployment Guide
+
+- [ ] README.md update
+- [ ] Setup instructions
+- [ ] Environment variables documentation
+- [ ] Docker Compose usage guide
+- [ ] Troubleshooting section
+
+---
+
+## 📋 Task Management Commands
+
+### Start a task
+```bash
+# Mark task as in progress by adding 🔄 emoji before [ ]
+🔄 [ ] Task name
+```
+
+### Complete a task
+```bash
+# Mark task as done by checking the box
+- [x] Task name
+```
+
+### Track issues
+```bash
+# Add ⚠️ emoji for blocked tasks
+⚠️ [ ] Blocked task (reason: ...)
+```
+
+---
+
+## 🎯 Success Criteria Checklist
+
+Before considering POC complete, verify:
+
+### Functional Requirements
+- [ ] Users can register and login
+- [ ] Users can create trading account
+- [ ] Users can deposit funds
+- [ ] Users can place LIMIT orders
+- [ ] Users can place MARKET orders
+- [ ] Orders match automatically (async)
+- [ ] Trades settle atomically
+- [ ] Users can cancel orders
+- [ ] Balance updates correctly
+- [ ] WebSocket events work
+- [ ] Ticker data accurate
+- [ ] Candlesticks generated
+
+### Non-Functional Requirements
+- [ ] Order placement < 100ms (P95)
+- [ ] Matching < 50ms
+- [ ] Settlement < 200ms
+- [ ] Unit tests pass (>80% coverage for core)
+- [ ] No critical security vulnerabilities
+- [ ] Proper error handling (no 500 errors for user mistakes)
+- [ ] Logging works (Winston)
+- [ ] Swagger docs complete
+
+### Documentation
+- [ ] TDD document complete
+- [ ] API documentation (Swagger)
+- [ ] README with setup instructions
+- [ ] Postman collection
+- [ ] Database schema documented
+
+---
+
+## 📞 Support & Questions
+
+If stuck on any task:
+1. Review TDD document section
+2. Check POC_FLOWS_REQUIREMENTS.md for business logic
+3. Check POC_FLOWS_CLARIFY_REQUIREMENTS.md for decisions
+
+---
+
+**Last Updated**: 2026-03-12
+**Status**: Ready to implement
+**Next Task**: Phase 1 - Docker Compose setup
