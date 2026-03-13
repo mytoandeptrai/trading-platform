@@ -2,11 +2,9 @@ import {
   Column,
   CreateDateColumn,
   Entity,
-  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { AccountEntity } from '../../account/entities/account.entity';
 
 @Entity({ name: 'matching_order' })
 export class OrderEntity {
@@ -88,10 +86,5 @@ export class OrderEntity {
 
   @Column({ name: 'expires_at', type: 'timestamp', nullable: true })
   expiresAt: Date | null;
-
-  @ManyToOne(() => AccountEntity, (account) => account.id, {
-    onDelete: 'CASCADE',
-  })
-  account: AccountEntity;
 }
 
