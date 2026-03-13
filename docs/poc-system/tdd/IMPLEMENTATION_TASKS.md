@@ -14,11 +14,11 @@
 | **Phase 1: Foundation** | 7 | 6 | 86% | ✅ Near Complete |
 | **Phase 2: Auth & Account** | 14 | 0 | 0% | ⏳ Not Started |
 | **Phase 3: Order Management** | 12 | 10 | 83% | ✅ Near Complete |
-| **Phase 4: Matching Engine** | 15 | 0 | 0% | ⏳ Not Started |
+| **Phase 4: Matching Engine** | 15 | 13 | 87% | ✅ Near Complete |
 | **Phase 5: Market Data** | 8 | 0 | 0% | ⏳ Not Started |
 | **Phase 6: WebSocket** | 6 | 0 | 0% | ⏳ Not Started |
 | **Phase 7: Testing & Docs** | 8 | 0 | 0% | ⏳ Not Started |
-| **TOTAL** | **70** | **16** | **23%** | 🟡 In Progress |
+| **TOTAL** | **70** | **29** | **41%** | 🟡 In Progress |
 
 ---
 
@@ -246,64 +246,64 @@
 
 ### BullMQ Setup
 
-- [ ] Install dependencies (`bullmq`, `ioredis`)
-- [ ] BullMQ configuration
-  - [ ] Queue connection (Redis)
-  - [ ] Default job options (retry: 3, backoff)
-  - [ ] Priority queue enabled
-- [ ] Create OrderMatchingQueue
-- [ ] Create MatchingWorker
+- [x] Install dependencies (`bullmq`, `ioredis`)
+- [x] BullMQ configuration
+  - [x] Queue connection (Redis)
+  - [x] Default job options (retry: 3, backoff)
+  - [x] Priority queue enabled
+- [x] Create OrderMatchingQueue
+- [x] Create MatchingWorker
 
 ### Matching Processor
 
-- [ ] Generate MatchingProcessor
-- [ ] `@Process('processOrder')` handler
-  - [ ] Fetch order from DB
-  - [ ] Validate order status (PENDING or PARTLY_FILLED)
-  - [ ] Determine order type (LIMIT or MARKET)
-  - [ ] Call matching logic
-  - [ ] Handle MARKET order insufficient liquidity
-  - [ ] Update order status
-  - [ ] Log execution time
-- [ ] Matching algorithm (LIMIT orders)
-  - [ ] Get opposing orders from Redis
-  - [ ] Check price compatibility
-  - [ ] Loop through matches
-  - [ ] Calculate match quantity (min of remaining)
-  - [ ] Create trade record
-  - [ ] Update order quantities
-  - [ ] Break when fully filled
-- [ ] Matching algorithm (MARKET orders)
-  - [ ] Get ALL opposing orders
-  - [ ] Loop through all price levels
-  - [ ] Match until quantity exhausted
-  - [ ] Handle insufficient liquidity
-  - [ ] Mark as PARTLY_FILLED if needed
+- [x] Generate MatchingProcessor
+- [x] `@Process('processOrder')` handler
+  - [x] Fetch order from DB
+  - [x] Validate order status (PENDING or PARTLY_FILLED)
+  - [x] Determine order type (LIMIT or MARKET)
+  - [x] Call matching logic
+  - [x] Handle MARKET order insufficient liquidity
+  - [x] Update order status
+  - [x] Log execution time
+- [x] Matching algorithm (LIMIT orders)
+  - [x] Get opposing orders from Redis
+  - [x] Check price compatibility
+  - [x] Loop through matches
+  - [x] Calculate match quantity (min of remaining)
+  - [x] Create trade record
+  - [x] Update order quantities
+  - [x] Break when fully filled
+- [x] Matching algorithm (MARKET orders)
+  - [x] Get ALL opposing orders
+  - [x] Loop through all price levels
+  - [x] Match until quantity exhausted
+  - [x] Handle insufficient liquidity
+  - [x] Mark as PARTLY_FILLED if needed
 
 ### Settlement Service
 
-- [ ] Generate SettlementService
-- [ ] `settleTrade(trade)` main function
-  - [ ] Start SERIALIZABLE transaction
-  - [ ] Lock both account rows (FOR UPDATE)
-  - [ ] Validate account statuses (ACTIVE)
-  - [ ] Transfer coins to buyer
-  - [ ] Transfer cash to seller (minus fees)
-  - [ ] Deduct fees from locked balances
-  - [ ] Unlock remaining balances
-  - [ ] Create transaction records (audit trail)
-  - [ ] Update order status (COMPLETED or PARTLY_FILLED)
-  - [ ] Update trade status (CONFIRMED)
-  - [ ] COMMIT transaction
-  - [ ] Publish events (Redis pub/sub)
-- [ ] Error handling
-  - [ ] ROLLBACK on any error
-  - [ ] Mark trade as FAILED
-  - [ ] Log error details
-  - [ ] Maintain lock records for manual cleanup
-- [ ] Idempotency check
-  - [ ] Check if trade already settled
-  - [ ] Return early if CONFIRMED
+- [x] Generate SettlementService
+- [x] `settleTrade(trade)` main function
+  - [x] Start SERIALIZABLE transaction
+  - [x] Lock both account rows (FOR UPDATE)
+  - [x] Validate account statuses (ACTIVE)
+  - [x] Transfer coins to buyer
+  - [x] Transfer cash to seller (minus fees)
+  - [x] Deduct fees from locked balances
+  - [x] Unlock remaining balances
+  - [x] Create transaction records (audit trail)
+  - [x] Update order status (COMPLETED or PARTLY_FILLED)
+  - [x] Update trade status (CONFIRMED)
+  - [x] COMMIT transaction
+  - [x] Publish events (Redis pub/sub)
+- [x] Error handling
+  - [x] ROLLBACK on any error
+  - [x] Mark trade as FAILED
+  - [x] Log error details
+  - [x] Maintain lock records for manual cleanup
+- [x] Idempotency check
+  - [x] Check if trade already settled
+  - [x] Return early if CONFIRMED
 
 ### Testing
 
