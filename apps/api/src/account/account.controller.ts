@@ -126,8 +126,18 @@ export class AccountController {
 
   @Get('transactions')
   @ApiOperation({ summary: 'Get transaction history' })
-  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Max items (default 50)' })
-  @ApiQuery({ name: 'offset', required: false, type: Number, description: 'Offset for pagination (default 0)' })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Max items (default 50)',
+  })
+  @ApiQuery({
+    name: 'offset',
+    required: false,
+    type: Number,
+    description: 'Offset for pagination (default 0)',
+  })
   @ApiOkResponse({
     description: 'List of transactions with pagination.',
     schema: {

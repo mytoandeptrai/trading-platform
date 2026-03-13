@@ -1,10 +1,9 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import * as dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
-import { LoggerService } from './common/logger/logger.service';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 
@@ -12,18 +11,11 @@ async function bootstrap() {
   // Load environment variables from .env (apps/api/.env)
   dotenv.config();
 
-  const logger = new LoggerService();
-  logger.setContext('Bootstrap');
+  const logger = new Logger('Bootstrap');
 
   try {
-    // Create NestJS application with custom logger
-    const app = await NestFactory.create(AppModule, {
-      logger: (() => {
-        const nestLogger = new LoggerService();
-        nestLogger.setContext('NestApplication');
-        return nestLogger;
-      })(),
-    });
+    // Create NestJS application with default Nest logger
+    const app = await NestFactory.create(AppModule);
 
     // Global validation pipe
     app.useGlobalPipes(
@@ -38,7 +30,7 @@ async function bootstrap() {
     );
 
     // Global exception filter
-    app.useGlobalFilters(new HttpExceptionFilter(logger));
+    app.useGlobalFilters(new HttpExceptionFilter());
 
     // Global response transform interceptor
     app.useGlobalInterceptors(new TransformInterceptor());

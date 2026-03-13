@@ -1,4 +1,4 @@
-import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -12,12 +12,10 @@ import {
   InvalidCredentialsException,
   InvalidTokenException,
 } from '../common/exceptions/business.exception';
-import { LoggerService } from '../common/logger/logger.service';
 import { UserEntity } from './entities/user.entity';
 import { AccountService } from '../account/account.service';
-import { Redis } from 'ioredis';
+import { RedisService } from '../common/redis/redis.service';
 import type { JwtConfig } from '../config/jwt.config';
-import type { RedisConfig } from '../config/redis.config';
 
 export interface JwtPayload {
   sub: number;
@@ -38,28 +36,17 @@ export interface AuthResponse {
 @Injectable()
 export class AuthService {
   private readonly SALT_ROUNDS = 12;
-  private readonly redis: Redis;
+  private readonly logger = new Logger(AuthService.name);
 
   constructor(
     private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
-    private readonly logger: LoggerService,
     @InjectRepository(UserEntity)
     private readonly usersRepo: Repository<UserEntity>,
     @Inject(forwardRef(() => AccountService))
     private readonly accountService: AccountService,
-  ) {
-    this.logger.setContext('AuthService');
-
-    const redisCfg = this.configService.get<RedisConfig>('redis');
-    this.redis = new Redis({
-      host: redisCfg?.host || 'localhost',
-      port: redisCfg?.port ?? 6379,
-      password: redisCfg?.password || undefined,
-      db: redisCfg?.db ?? 0,
-      maxRetriesPerRequest: 3,
-    });
-  }
+    private readonly redisService: RedisService,
+  ) {}
 
   async register(dto: RegisterDto): Promise<AuthResponse> {
     // Check if email exists
@@ -270,7 +257,7 @@ export class AuthService {
     const key = `refresh_token:${userId}`;
     const jwtCfg = this.configService.get<JwtConfig>('jwt');
     const ttlSeconds = jwtCfg?.refreshExpirationSeconds ?? 604800;
-    await this.redis.set(key, token, 'EX', ttlSeconds);
+    await this.redisService.getClient().set(key, token, 'EX', ttlSeconds);
   }
 
   private async ensureStoredRefreshTokenValid(
@@ -278,7 +265,7 @@ export class AuthService {
     presentedToken: string,
   ): Promise<void> {
     const key = `refresh_token:${userId}`;
-    const stored = await this.redis.get(key);
+    const stored = await this.redisService.getClient().get(key);
 
     if (!stored || stored !== presentedToken) {
       throw new InvalidTokenException();

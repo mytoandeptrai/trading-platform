@@ -1,17 +1,15 @@
-import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Pool, QueryResult } from 'pg';
-import { LoggerService } from '../common/logger/logger.service';
 
 @Injectable()
 export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   private pool: Pool;
+  private readonly logger = new Logger(DatabaseService.name);
 
   constructor(
-    private readonly logger: LoggerService,
     private readonly configService: ConfigService,
   ) {
-    this.logger.setContext('DatabaseService');
     this.pool = new Pool({
       host: this.configService.get('DB_HOST') || 'localhost',
       port: parseInt(this.configService.get('DB_PORT') || '5432', 10),

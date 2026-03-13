@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { BullModule } from '@nestjs/bullmq';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { OrderController } from './order.controller';
 import { OrderService } from './order.service';
@@ -9,11 +10,16 @@ import { AccountEntity } from '../account/entities/account.entity';
 import { LoggerModule } from '../common/logger/logger.module';
 import { AccountModule } from '../account/account.module';
 import { OrderbookService } from './orderbook.service';
+import { MatchingProcessor } from './jobs/matching.processor';
+import { SettlementService } from './settlement.service';
 
 @Module({
   imports: [
     LoggerModule,
     AccountModule,
+    BullModule.registerQueue({
+      name: 'order-matching',
+    }),
     TypeOrmModule.forFeature([
       OrderEntity,
       OrderHistoryEntity,
@@ -22,7 +28,11 @@ import { OrderbookService } from './orderbook.service';
     ]),
   ],
   controllers: [OrderController],
-  providers: [OrderService, OrderbookService],
+  providers: [
+    OrderService,
+    OrderbookService,
+    MatchingProcessor,
+    SettlementService,
+  ],
 })
 export class MatchingModule {}
-

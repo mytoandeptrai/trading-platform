@@ -1,22 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { Redis } from 'ioredis';
+import { RedisService } from '../common/redis/redis.service';
 
 @Injectable()
 export class OrderbookService {
-  private readonly redis: Redis;
+  constructor(private readonly redisService: RedisService) {}
 
-  constructor(private readonly configService: ConfigService) {
-    const redisCfg = this.configService.get<import('../config/redis.config').RedisConfig>(
-      'redis',
-    );
-    this.redis = new Redis({
-      host: redisCfg?.host || 'localhost',
-      port: redisCfg?.port ?? 6379,
-      password: redisCfg?.password || undefined,
-      db: redisCfg?.db ?? 0,
-      maxRetriesPerRequest: 3,
-    });
+  private get redis() {
+    return this.redisService.getClient();
   }
 
   private getKey(pair: string, isBid: boolean): string {

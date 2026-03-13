@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import { LoggerService } from '../common/logger/logger.service';
+import { InjectQueue } from '@nestjs/bullmq';
+import type { Queue } from 'bullmq';
 import { AccountEntity } from '../account/entities/account.entity';
 import { BalanceService } from '../account/balance.service';
 import { PlaceOrderDto } from './dto/place-order.dto';
@@ -17,8 +18,9 @@ import { getPairConfig } from '../common/constants/pairs.constant';
 
 @Injectable()
 export class OrderService {
+  private readonly logger = new Logger(OrderService.name);
+
   constructor(
-    private readonly logger: LoggerService,
     @InjectRepository(OrderEntity)
     private readonly orderRepo: Repository<OrderEntity>,
     @InjectRepository(OrderHistoryEntity)
@@ -28,9 +30,9 @@ export class OrderService {
     private readonly balanceService: BalanceService,
     private readonly orderbookService: OrderbookService,
     private readonly dataSource: DataSource,
-  ) {
-    this.logger.setContext('OrderService');
-  }
+    @InjectQueue('order-matching')
+    private readonly matchingQueue: Queue,
+  ) {}
 
   async placeOrder(
     userId: number,
@@ -166,7 +168,14 @@ export class OrderService {
         `Order placed: id=${saved.id}, user=${userId}, pair=${dto.pair}, side=${dto.side}, type=${dto.type}`,
       );
 
-      // BullMQ job push will be implemented in Phase 4
+      // Phase 4: Push matching job (priority: MARKET(1) > LIMIT(10) in BullMQ)
+      await this.matchingQueue.add(
+        'processOrder',
+        { orderId: Number(saved.id) },
+        {
+          priority: dto.type === 'MARKET' ? 1 : 10,
+        },
+      );
 
       return { orderId: Number(saved.id) };
     } catch (error) {

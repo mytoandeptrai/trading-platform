@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { DepositDto } from './dto/deposit.dto';
@@ -8,7 +8,6 @@ import {
   AccountFrozenException,
   BusinessException,
 } from '../common/exceptions/business.exception';
-import { LoggerService } from '../common/logger/logger.service';
 import { AccountEntity } from './entities/account.entity';
 import { AccountCashEntity } from './entities/account-cash.entity';
 import { AccountCoinEntity } from './entities/account-coin.entity';
@@ -16,8 +15,9 @@ import { TransactionEntity } from './entities/transaction.entity';
 
 @Injectable()
 export class AccountService {
+  private readonly logger = new Logger(AccountService.name);
+
   constructor(
-    private readonly logger: LoggerService,
     private readonly dataSource: DataSource,
     @InjectRepository(AccountEntity)
     private readonly accountRepo: Repository<AccountEntity>,
@@ -27,9 +27,7 @@ export class AccountService {
     private readonly coinRepo: Repository<AccountCoinEntity>,
     @InjectRepository(TransactionEntity)
     private readonly txRepo: Repository<TransactionEntity>,
-  ) {
-    this.logger.setContext('AccountService');
-  }
+  ) {}
 
   async ensureAccountForUser(userId: number): Promise<AccountEntity> {
     const existing = await this.accountRepo.findOne({
