@@ -1,17 +1,28 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import * as dotenv from 'dotenv';
+import cookieParser from 'cookie-parser';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { LoggerService } from './common/logger/logger.service';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 
 async function bootstrap() {
-  const logger = new LoggerService('Bootstrap');
+  // Load environment variables from .env (apps/api/.env)
+  dotenv.config();
+
+  const logger = new LoggerService();
+  logger.setContext('Bootstrap');
 
   try {
     // Create NestJS application with custom logger
     const app = await NestFactory.create(AppModule, {
-      logger: new LoggerService('NestApplication'),
+      logger: (() => {
+        const nestLogger = new LoggerService();
+        nestLogger.setContext('NestApplication');
+        return nestLogger;
+      })(),
     });
 
     // Global validation pipe
@@ -45,10 +56,27 @@ async function bootstrap() {
       allowedHeaders: ['Content-Type', 'Authorization'],
     });
 
+    // Cookies parser (for reading auth cookies)
+    app.use(cookieParser());
+
     // Global prefix for all routes (except /health)
     app.setGlobalPrefix('api', {
       exclude: ['health', 'health/live', 'health/ready'],
     });
+
+    // Swagger (OpenAPI) setup
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('Trading Engine API')
+      .setDescription('NestJS Trading POC - Backend API')
+      .setVersion('1.0.0')
+      .addCookieAuth('access_token', {
+        type: 'apiKey',
+        in: 'cookie',
+      })
+      .build();
+
+    const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup('api/docs', app, swaggerDocument);
 
     // Get port from environment
     const port = process.env.PORT || 3001;
@@ -59,10 +87,7 @@ async function bootstrap() {
     await app.listen(port);
 
     logger.log(`🚀 ${appName} is running on: http://localhost:${port}`);
-    logger.log(`📚 API endpoints: http://localhost:${port}/api`);
-    logger.log(`💚 Health check: http://localhost:${port}/health`);
-    logger.log(`🔐 Auth: http://localhost:${port}/api/auth`);
-    logger.log(`💰 Account: http://localhost:${port}/api/account`);
+    logger.log(`🔐 Swagger: http://localhost:${port}/api/docs`);
     logger.log(`🌍 Environment: ${nodeEnv}`);
     logger.log(`🔧 CORS enabled for: ${allowedOrigins.join(', ')}`);
   } catch (error) {

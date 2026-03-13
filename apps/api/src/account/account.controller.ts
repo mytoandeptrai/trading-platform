@@ -19,6 +19,12 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 export class AccountController {
   constructor(private readonly accountService: AccountService) {}
 
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  async createAccount(@Request() req) {
+    return this.accountService.createAccountForUser(req.user.id);
+  }
+
   @Get('balance')
   async getBalance(@Request() req) {
     return this.accountService.getBalance(req.user.id);

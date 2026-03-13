@@ -15,25 +15,17 @@ export class BusinessException extends HttpException {
 
 export class InsufficientBalanceException extends BusinessException {
   constructor(required: number, available: number) {
-    super(
-      'Insufficient balance',
-      'INSUFFICIENT_BALANCE',
-      {
-        required,
-        available,
-        shortage: required - available,
-      },
-    );
+    super('Insufficient balance', 'INSUFFICIENT_BALANCE', {
+      required,
+      available,
+      shortage: required - available,
+    });
   }
 }
 
 export class AccountFrozenException extends BusinessException {
   constructor(accountId: number) {
-    super(
-      'Account is frozen',
-      'ACCOUNT_FROZEN',
-      { accountId },
-    );
+    super('Account is frozen', 'ACCOUNT_FROZEN', { accountId });
   }
 }
 

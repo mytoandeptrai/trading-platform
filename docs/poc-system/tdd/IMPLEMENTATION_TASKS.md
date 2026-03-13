@@ -93,66 +93,66 @@
 
 ### Auth Module
 
-- [ ] Generate Auth module (`nest g module auth`)
-- [ ] Generate Auth service (`nest g service auth`)
-- [ ] Generate Auth controller (`nest g controller auth`)
-- [ ] User entity
-  - [ ] Define user schema (username, email, password_hash)
-  - [ ] TypeORM/raw SQL implementation
-- [ ] Registration endpoint (`POST /auth/register`)
-  - [ ] Input validation (class-validator)
-  - [ ] Password hashing (bcrypt, 12 rounds)
-  - [ ] Email uniqueness check
-  - [ ] Username uniqueness check
-  - [ ] Error handling (409 Conflict, 400 Bad Request)
-- [ ] Login endpoint (`POST /auth/login`)
-  - [ ] Credential validation
-  - [ ] JWT token generation (HS256, 24h expiry)
-  - [ ] Refresh token (Redis, 7 days TTL)
-  - [ ] Return access_token + refresh_token
-- [ ] JWT Strategy (Passport)
-  - [ ] JWT validation middleware
-  - [ ] Extract user from token
+- [x] Generate Auth module (`nest g module auth`)
+- [x] Generate Auth service (`nest g service auth`)
+- [x] Generate Auth controller (`nest g controller auth`)
+- [x] User entity
+  - [x] Define user schema (username, email, password_hash)
+  - [x] TypeORM/raw SQL implementation
+- [x] Registration endpoint (`POST /auth/register`)
+  - [x] Input validation (class-validator)
+  - [x] Password hashing (bcrypt, 12 rounds)
+  - [x] Email uniqueness check
+  - [x] Username uniqueness check
+  - [x] Error handling (409 Conflict, 400 Bad Request)
+- [x] Login endpoint (`POST /auth/login`)
+  - [x] Credential validation
+  - [x] JWT token generation (HS256, 24h expiry)
+  - [x] Refresh token (Redis, 7 days TTL)
+  - [x] Return access_token + refresh_token
+- [x] JWT Strategy (Passport)
+  - [x] JWT validation middleware
+  - [x] Extract user from token
 - [ ] Auth Guards
-  - [ ] JwtAuthGuard (protect routes)
+  - [x] JwtAuthGuard (protect routes)
   - [ ] RolesGuard (role-based access)
 
 ### Account Module
 
-- [ ] Generate Account module
-- [ ] Generate Account service
-- [ ] Generate Account controller
-- [ ] Account entities
-  - [ ] Account entity (main account)
-  - [ ] AccountCoin entity (coin balances)
-  - [ ] AccountCash entity (cash balances)
-  - [ ] Transaction entity (audit trail)
-  - [ ] LockRecord entity (balance locks)
-- [ ] Account creation endpoint (`POST /account`)
-  - [ ] Auto-create after registration
+- [x] Generate Account module
+- [x] Generate Account service
+- [x] Generate Account controller
+- [x] Account entities
+  - [x] Account entity (main account)
+  - [x] AccountCoin entity (coin balances)
+  - [x] AccountCash entity (cash balances)
+  - [x] Transaction entity (audit trail)
+  - [x] LockRecord entity (balance locks)
+- [x] Account creation endpoint (`POST /account`)
+  - [x] Auto-create after registration
   - [ ] Initialize coin balances (BTC, ETH = 0)
-  - [ ] Initialize cash balance (USD = 0)
-  - [ ] Set default KYC level (1)
-  - [ ] Set trading_status = ACTIVE
-- [ ] Balance query endpoint (`GET /account/balance`)
-  - [ ] Return coins + cash
-  - [ ] Available vs locked breakdown
+  - [x] Initialize cash balance (USD = 0)
+  - [x] Set default KYC level (1)
+  - [x] Set trading_status = ACTIVE
+- [x] Balance query endpoint (`GET /account/balance`)
+  - [x] Return coins + cash
+  - [x] Available vs locked breakdown
 - [ ] Balance Service
   - [ ] `lockCash()` - Lock cash for order
   - [ ] `lockCoin()` - Lock coin for order
   - [ ] `unlockCash()` - Unlock after cancel/settlement
   - [ ] `unlockCoin()` - Unlock after cancel/settlement
   - [ ] Pessimistic locking (FOR UPDATE)
-- [ ] Deposit endpoint (`POST /account/deposit`)
-  - [ ] Validate amount > 0
-  - [ ] Update balance atomically
-  - [ ] Create transaction record
-- [ ] Withdrawal endpoint (`POST /account/withdraw`)
-  - [ ] Validate sufficient balance
-  - [ ] Update balance atomically
-  - [ ] Create transaction record
-- [ ] Transaction history endpoint (`GET /account/transactions`)
-  - [ ] Pagination support
+- [x] Deposit endpoint (`POST /account/deposit`)
+  - [x] Validate amount > 0
+  - [x] Update balance atomically
+  - [x] Create transaction record
+- [x] Withdrawal endpoint (`POST /account/withdraw`)
+  - [x] Validate sufficient balance
+  - [x] Update balance atomically
+  - [x] Create transaction record
+- [x] Transaction history endpoint (`GET /account/transactions`)
+  - [x] Pagination support
   - [ ] Filter by type (DEPOSIT, WITHDRAW, TRADE)
 
 ### Testing
