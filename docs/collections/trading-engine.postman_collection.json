@@ -1,0 +1,433 @@
+{
+  "info": {
+    "name": "Trading Engine API",
+    "_postman_id": "00000000-0000-0000-0000-000000000001",
+    "description": "Postman collection for NestJS Trading Engine POC (Auth, Account, Orders)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "register"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"user01\",\n  \"email\": \"user01@example.com\",\n  \"password\": \"MyP@ssw0rd1!\"\n}"
+            },
+            "description": "Register a new user. On success, backend sets access_token & refresh_token cookies (if called from browser). Response body contains user."
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"user01\",\n  \"password\": \"MyP@ssw0rd1!\"\n}"
+            },
+            "description": "Login with username/password. Response body:\n{\n  \"user\": { id, username, email },\n  \"accessToken\": \"...\",\n  \"refreshToken\": \"...\"\n}\n\nCopy accessToken into environment variable {{access_token}} manually."
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Token (body)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "refresh"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refresh_token}}\"\n}"
+            },
+            "description": "Refresh access token using refreshToken in body. Response body same shape as login. Update {{access_token}} and {{refresh_token}} in environment."
+          },
+          "response": []
+        },
+        {
+          "name": "Me (profile)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "me"]
+            },
+            "description": "Get current user profile. JWT is taken from Authorization: Bearer {{access_token}} or cookie access_token."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Account",
+      "item": [
+        {
+          "name": "Create Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/account",
+              "host": ["{{base_url}}"],
+              "path": ["account"]
+            },
+            "description": "Create trading account for current user. Usually auto-created on register, so this is mostly for manual tests."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Balance",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/account/balance",
+              "host": ["{{base_url}}"],
+              "path": ["account", "balance"]
+            },
+            "description": "Get cash + coin balances for current user.\nResponse example:\n{\n  \"account\": { ... },\n  \"cash\": [ { currency, available, locked, total } ],\n  \"coins\": [ { coin, available, locked, frozen, total } ]\n}"
+          },
+          "response": []
+        },
+        {
+          "name": "Deposit (cash/coin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/account/deposit",
+              "host": ["{{base_url}}"],
+              "path": ["account", "deposit"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"asset\": \"USD\",   // USD, VND, BTC, ETH\n  \"amount\": 10000\n}"
+            },
+            "description": "Deposit asset into account. For testing, use large USD amount to place BUY orders."
+          },
+          "response": []
+        },
+        {
+          "name": "Withdraw (cash/coin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/account/withdraw",
+              "host": ["{{base_url}}"],
+              "path": ["account", "withdraw"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"asset\": \"USD\",\n  \"amount\": 500\n}"
+            },
+            "description": "Withdraw asset from account (logical withdraw, updates balances & transaction log)."
+          },
+          "response": []
+        },
+        {
+          "name": "Transaction History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/account/transactions?limit=50&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["account", "transactions"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            },
+            "description": "Get paginated transaction history. Currently filter-by-type is not implemented (TDD Phase 2 todo)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Orders",
+      "item": [
+        {
+          "name": "Place LIMIT BUY",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/orders",
+              "host": ["{{base_url}}"],
+              "path": ["orders"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pair\": \"BTC/USD\",\n  \"side\": \"BUY\",\n  \"type\": \"LIMIT\",\n  \"price\": 50000,\n  \"amount\": 0.01,\n  \"validity\": \"GTC\"\n}"
+            },
+            "description": "Place LIMIT BUY order. Requires enough USD available balance. Will lock USD and add to Redis order book."
+          },
+          "response": []
+        },
+        {
+          "name": "Place LIMIT SELL",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/orders",
+              "host": ["{{base_url}}"],
+              "path": ["orders"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pair\": \"BTC/USD\",\n  \"side\": \"SELL\",\n  \"type\": \"LIMIT\",\n  \"price\": 50500,\n  \"amount\": 0.01,\n  \"validity\": \"GTC\"\n}"
+            },
+            "description": "Place LIMIT SELL order. Requires enough BTC available balance. Locks BTC, adds to order book."
+          },
+          "response": []
+        },
+        {
+          "name": "Place MARKET BUY",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/orders",
+              "host": ["{{base_url}}"],
+              "path": ["orders"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pair\": \"BTC/USD\",\n  \"side\": \"BUY\",\n  \"type\": \"MARKET\",\n  \"amount\": 0.01\n  // optional: \"price\": 52000 // max price per unit\n}"
+            },
+            "description": "Place MARKET BUY. Locks USD using worstCasePrice (dto.price or pairCfg.maxPrice) * 1.2. Matching engine will consume multiple ask levels."
+          },
+          "response": []
+        },
+        {
+          "name": "Place MARKET SELL",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/orders",
+              "host": ["{{base_url}}"],
+              "path": ["orders"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pair\": \"BTC/USD\",\n  \"side\": \"SELL\",\n  \"type\": \"MARKET\",\n  \"amount\": 0.01\n}"
+            },
+            "description": "Place MARKET SELL. Locks BTC amount and matches through bid levels."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Order by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/orders/{{order_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["orders", "{{order_id}}"]
+            },
+            "description": "Get single order by ID. Only returns if order belongs to current user."
+          },
+          "response": []
+        },
+        {
+          "name": "List Orders (optional status)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/orders?status=PENDING&limit=50&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["orders"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "PENDING"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            },
+            "description": "List orders for current user, optionally filtered by status. Default limit=50, offset=0."
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Order",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/orders/{{order_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["orders", "{{order_id}}"]
+            },
+            "description": "Cancel order by ID (if PENDING or PARTLY_FILLED). Unlocks remaining locked balance and removes from Redis book."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3001/api"
+    },
+    {
+      "key": "access_token",
+      "value": ""
+    },
+    {
+      "key": "refresh_token",
+      "value": ""
+    },
+    {
+      "key": "order_id",
+      "value": "1"
+    }
+  ]
+}
+
