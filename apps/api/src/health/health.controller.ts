@@ -1,4 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiOkResponse } from '@nestjs/swagger';
 import {
   HealthCheck,
   HealthCheckService,
@@ -6,6 +7,7 @@ import {
 } from '@nestjs/terminus';
 import { RedisHealthIndicator } from './redis.health';
 
+@ApiTags('health')
 @Controller('health')
 export class HealthController {
   constructor(
@@ -16,6 +18,8 @@ export class HealthController {
 
   @Get()
   @HealthCheck()
+  @ApiOperation({ summary: 'Full health check (DB + Redis)' })
+  @ApiOkResponse({ description: 'Status of database and Redis' })
   check() {
     return this.health.check([
       // PostgreSQL health check
@@ -28,6 +32,8 @@ export class HealthController {
 
   @Get('live')
   @HealthCheck()
+  @ApiOperation({ summary: 'Liveness probe' })
+  @ApiOkResponse({ description: 'App is running' })
   liveness() {
     // Simple liveness probe - just checks if app is running
     return {
@@ -39,6 +45,8 @@ export class HealthController {
 
   @Get('ready')
   @HealthCheck()
+  @ApiOperation({ summary: 'Readiness probe (DB + Redis)' })
+  @ApiOkResponse({ description: 'App is ready to serve traffic' })
   readiness() {
     // Readiness probe - checks if app is ready to serve traffic
     return this.health.check([
