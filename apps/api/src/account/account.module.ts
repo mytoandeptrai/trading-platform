@@ -9,6 +9,7 @@ import { AccountCashEntity } from './entities/account-cash.entity';
 import { AccountCoinEntity } from './entities/account-coin.entity';
 import { LockRecordEntity } from './entities/lock-record.entity';
 import { TransactionEntity } from './entities/transaction.entity';
+import { BalanceService } from './balance.service';
 
 @Module({
   imports: [
@@ -23,7 +24,7 @@ import { TransactionEntity } from './entities/transaction.entity';
     ]),
   ],
   controllers: [AccountController],
-  providers: [AccountService],
-  exports: [AccountService],
+  providers: [AccountService, BalanceService],
+  exports: [AccountService, BalanceService],
 })
 export class AccountModule {}

@@ -9,6 +9,7 @@ import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
 import { AccountModule } from './account/account.module';
 import { DatabaseModule } from './database/database.module';
+import { MatchingModule } from './matching/matching.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { DatabaseModule } from './database/database.module';
     HealthModule,
     AuthModule,
     AccountModule,
+    MatchingModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -13,12 +13,12 @@
 |-------|-------|-----------|----------|--------|
 | **Phase 1: Foundation** | 7 | 6 | 86% | ✅ Near Complete |
 | **Phase 2: Auth & Account** | 14 | 0 | 0% | ⏳ Not Started |
-| **Phase 3: Order Management** | 12 | 0 | 0% | ⏳ Not Started |
+| **Phase 3: Order Management** | 12 | 10 | 83% | ✅ Near Complete |
 | **Phase 4: Matching Engine** | 15 | 0 | 0% | ⏳ Not Started |
 | **Phase 5: Market Data** | 8 | 0 | 0% | ⏳ Not Started |
 | **Phase 6: WebSocket** | 6 | 0 | 0% | ⏳ Not Started |
 | **Phase 7: Testing & Docs** | 8 | 0 | 0% | ⏳ Not Started |
-| **TOTAL** | **70** | **6** | **9%** | 🟡 In Progress |
+| **TOTAL** | **70** | **16** | **23%** | 🟡 In Progress |
 
 ---
 
@@ -173,60 +173,60 @@
 
 ### Order Module Setup
 
-- [ ] Generate Order module
-- [ ] Generate Order service
-- [ ] Generate Order controller
-- [ ] Order entities
-  - [ ] Order entity (matching_order table)
-  - [ ] Trade entity (matching_trade table)
-  - [ ] OrderHistory entity
+- [x] Generate Order module
+- [x] Generate Order service
+- [x] Generate Order controller
+- [x] Order entities
+  - [x] Order entity (matching_order table)
+  - [x] Trade entity (matching_trade table)
+  - [x] OrderHistory entity
 
 ### Order Service
 
-- [ ] Place LIMIT Order (`POST /orders`)
-  - [ ] Validate input (DTO with class-validator)
-  - [ ] Check pair trading status
-  - [ ] Check account trading status
-  - [ ] Calculate required balance + fees
-  - [ ] Call BalanceService.lockCash/lockCoin
-  - [ ] Generate order ID (snowflake/bigserial)
-  - [ ] INSERT into matching_order (status=PENDING)
-  - [ ] Add to Redis order book (ZADD)
-  - [ ] Push to BullMQ queue (priority=10)
-  - [ ] Return 202 Accepted
-- [ ] Place MARKET Order (`POST /orders`)
-  - [ ] Same validation as LIMIT
-  - [ ] Calculate worst-case estimate (price × 1.2)
-  - [ ] Lock balance with slippage buffer
-  - [ ] INSERT with type=MARKET, price=NULL
-  - [ ] Push to BullMQ queue (priority=1)
-  - [ ] Return 202 Accepted
-- [ ] Get Order by ID (`GET /orders/:id`)
-  - [ ] Query from database
-  - [ ] Verify ownership (user can only see own orders)
-- [ ] Get Orders list (`GET /orders`)
-  - [ ] Filter by status (PENDING, COMPLETED, etc.)
-  - [ ] Pagination (limit, offset)
-  - [ ] Sort by placed_at DESC
-- [ ] Cancel Order (`DELETE /orders/:id`)
-  - [ ] Check order status (must be PENDING or PARTLY_FILLED)
-  - [ ] Remove from Redis order book (ZREM)
-  - [ ] Calculate remaining balance to unlock
-  - [ ] Call BalanceService.unlock
-  - [ ] UPDATE order status = CANCELED
-  - [ ] Return 200 OK
+- [x] Place LIMIT Order (`POST /orders`)
+  - [x] Validate input (DTO with class-validator)
+  - [x] Check pair trading status
+  - [x] Check account trading status
+  - [x] Calculate required balance + fees
+  - [x] Call BalanceService.lockCash/lockCoin
+  - [x] Generate order ID (snowflake/bigserial)
+  - [x] INSERT into matching_order (status=PENDING)
+  - [x] Add to Redis order book (ZADD)
+  - [ ] Push to BullMQ queue (priority=10) — Phase 4
+  - [x] Return 202 Accepted
+- [x] Place MARKET Order (`POST /orders`)
+  - [x] Same validation as LIMIT
+  - [x] Calculate worst-case estimate (price × 1.2)
+  - [x] Lock balance with slippage buffer
+  - [x] INSERT with type=MARKET, price=NULL
+  - [ ] Push to BullMQ queue (priority=1) — Phase 4
+  - [x] Return 202 Accepted
+- [x] Get Order by ID (`GET /orders/:id`)
+  - [x] Query from database
+  - [x] Verify ownership (user can only see own orders)
+- [x] Get Orders list (`GET /orders`)
+  - [x] Filter by status (PENDING, COMPLETED, etc.)
+  - [x] Pagination (limit, offset)
+  - [x] Sort by placed_at DESC
+- [x] Cancel Order (`DELETE /orders/:id`)
+  - [x] Check order status (must be PENDING or PARTLY_FILLED)
+  - [x] Remove from Redis order book (ZREM)
+  - [x] Calculate remaining balance to unlock
+  - [x] Call BalanceService.unlock
+  - [x] UPDATE order status = CANCELED
+  - [x] Return 200 OK
 
 ### Orderbook Service (Redis)
 
-- [ ] `addOrder(order)` - ZADD to sorted set
-  - [ ] BUY: ZADD orderbook:{pair}:bid -price order_id
-  - [ ] SELL: ZADD orderbook:{pair}:ask price order_id
-- [ ] `removeOrder(orderId, pair, isBid)` - ZREM from sorted set
-- [ ] `getBestBid(pair)` - ZRANGE 0 0 (highest bid)
-- [ ] `getBestAsk(pair)` - ZRANGE 0 0 (lowest ask)
+- [x] `addOrder(order)` - ZADD to sorted set
+  - [x] BUY: ZADD orderbook:{pair}:bid -price order_id
+  - [x] SELL: ZADD orderbook:{pair}:ask price order_id
+- [x] `removeOrder(orderId, pair, isBid)` - ZREM from sorted set
+- [x] `getBestBid(pair)` - ZRANGE 0 0 (highest bid)
+- [x] `getBestAsk(pair)` - ZRANGE 0 0 (lowest ask)
 - [ ] `getAllBids(pair)` - ZRANGE 0 -1 (all bids)
 - [ ] `getAllAsks(pair)` - ZRANGE 0 -1 (all asks)
-- [ ] `getOrderBookDepth(pair, levels)` - Top N levels
+- [x] `getOrderBookDepth(pair, levels)` - Top N levels
 
 ### Testing
 
