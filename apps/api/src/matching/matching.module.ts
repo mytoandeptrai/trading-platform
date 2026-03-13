@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { OrderController } from './order.controller';
+import { OrderbookController } from './orderbook.controller';
 import { OrderService } from './order.service';
 import { OrderEntity } from './entities/order.entity';
 import { OrderHistoryEntity } from './entities/order-history.entity';
@@ -27,7 +28,7 @@ import { SettlementService } from './settlement.service';
       AccountEntity,
     ]),
   ],
-  controllers: [OrderController],
+  controllers: [OrderController, OrderbookController],
   providers: [
     OrderService,
     OrderbookService,

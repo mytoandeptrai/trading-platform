@@ -28,7 +28,7 @@
               "mode": "raw",
               "raw": "{\n  \"username\": \"user01\",\n  \"email\": \"user01@example.com\",\n  \"password\": \"MyP@ssw0rd1!\"\n}"
             },
-            "description": "Register a new user. On success, backend sets access_token & refresh_token cookies (if called from browser). Response body contains user."
+            "description": "Register a new user. Does NOT set cookies. Response body: true."
           },
           "response": []
         },
@@ -51,7 +51,7 @@
               "mode": "raw",
               "raw": "{\n  \"username\": \"user01\",\n  \"password\": \"MyP@ssw0rd1!\"\n}"
             },
-            "description": "Login with username/password. Response body:\n{\n  \"user\": { id, username, email },\n  \"accessToken\": \"...\",\n  \"refreshToken\": \"...\"\n}\n\nCopy accessToken into environment variable {{access_token}} manually."
+            "description": "Login with username/password. Sets access_token & refresh_token cookies. Response body: { \"user\": { id, username, email } }.\n\nIf you prefer Bearer auth for Postman requests, copy the access token from Set-Cookie (or from a debug response if enabled) into {{access_token}}."
           },
           "response": []
         },
@@ -74,7 +74,27 @@
               "mode": "raw",
               "raw": "{\n  \"refreshToken\": \"{{refresh_token}}\"\n}"
             },
-            "description": "Refresh access token using refreshToken in body. Response body same shape as login. Update {{access_token}} and {{refresh_token}} in environment."
+            "description": "Refresh tokens. Prefers refresh_token cookie; body.refreshToken is optional fallback. Sets new cookies. Response body: { \"user\": { ... } }."
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "logout"]
+            },
+            "description": "Logout: clears cookies and revokes refresh token in Redis. Response: { ok: true }. (If using cookies in Postman, ensure cookie jar is enabled.)"
           },
           "response": []
         },
@@ -95,6 +115,44 @@
               "path": ["auth", "me"]
             },
             "description": "Get current user profile. JWT is taken from Authorization: Bearer {{access_token}} or cookie access_token."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Orderbook",
+      "item": [
+        {
+          "name": "Get Orderbook (depth)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/orderbook?pair=BTC/USD&levels=20",
+              "host": ["{{base_url}}"],
+              "path": ["orderbook"],
+              "query": [
+                { "key": "pair", "value": "BTC/USD" },
+                { "key": "levels", "value": "20" }
+              ]
+            },
+            "description": "Get top N bids/asks from Redis orderbook."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Orderbook (full list)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/orderbook?pair=BTC/USD",
+              "host": ["{{base_url}}"],
+              "path": ["orderbook"],
+              "query": [
+                { "key": "pair", "value": "BTC/USD" }
+              ]
+            },
+            "description": "Get full bids/asks list from Redis orderbook (may be large)."
           },
           "response": []
         }

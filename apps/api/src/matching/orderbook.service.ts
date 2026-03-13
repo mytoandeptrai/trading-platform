@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { RedisService } from '../common/redis/redis.service';
+import { getPairConfig } from '../common/constants/pairs.constant';
+import { BusinessException } from '../common/exceptions/business.exception';
 
 @Injectable()
 export class OrderbookService {
@@ -24,7 +26,9 @@ export class OrderbookService {
     await this.redis.zrem(key, orderId);
   }
 
-  async getBestBid(pair: string): Promise<{ orderId: string; price: number } | null> {
+  async getBestBid(
+    pair: string,
+  ): Promise<{ orderId: string; price: number } | null> {
     const key = this.getKey(pair, true);
     const res = await this.redis.zrange(key, 0, 0, 'WITHSCORES');
     if (res.length < 2) return null;
@@ -33,7 +37,9 @@ export class OrderbookService {
     return { orderId, price };
   }
 
-  async getBestAsk(pair: string): Promise<{ orderId: string; price: number } | null> {
+  async getBestAsk(
+    pair: string,
+  ): Promise<{ orderId: string; price: number } | null> {
     const key = this.getKey(pair, false);
     const res = await this.redis.zrange(key, 0, 0, 'WITHSCORES');
     if (res.length < 2) return null;
@@ -73,5 +79,57 @@ export class OrderbookService {
 
     return { bids, asks };
   }
-}
 
+  async getAllBids(
+    pair: string,
+  ): Promise<{ orderId: string; price: number }[]> {
+    const key = this.getKey(pair, true);
+    const res = await this.redis.zrange(key, 0, -1, 'WITHSCORES');
+    const bids: { orderId: string; price: number }[] = [];
+    for (let i = 0; i < res.length; i += 2) {
+      const orderId = res[i];
+      const scoreStr = res[i + 1];
+      bids.push({ orderId, price: -parseFloat(scoreStr) });
+    }
+    return bids;
+  }
+
+  async getAllAsks(
+    pair: string,
+  ): Promise<{ orderId: string; price: number }[]> {
+    const key = this.getKey(pair, false);
+    const res = await this.redis.zrange(key, 0, -1, 'WITHSCORES');
+    const asks: { orderId: string; price: number }[] = [];
+    for (let i = 0; i < res.length; i += 2) {
+      const orderId = res[i];
+      const scoreStr = res[i + 1];
+      asks.push({ orderId, price: parseFloat(scoreStr) });
+    }
+    return asks;
+  }
+
+  async getSnapshot(
+    pair: string,
+    levels?: number,
+  ): Promise<{
+    pair: string;
+    bids: { orderId: string; price: number }[];
+    asks: { orderId: string; price: number }[];
+  }> {
+    const cfg = getPairConfig(pair);
+    if (!cfg) {
+      throw new BusinessException('Pair not found', 'PAIR_NOT_FOUND');
+    }
+
+    if (levels && levels > 0) {
+      const { bids, asks } = await this.getOrderBookDepth(pair, levels);
+      return { pair, bids, asks };
+    }
+
+    const [bids, asks] = await Promise.all([
+      this.getAllBids(pair),
+      this.getAllAsks(pair),
+    ]);
+    return { pair, bids, asks };
+  }
+}
