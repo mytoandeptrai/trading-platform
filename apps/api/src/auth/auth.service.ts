@@ -48,7 +48,7 @@ export class AuthService {
     private readonly redisService: RedisService,
   ) {}
 
-  async register(dto: RegisterDto): Promise<AuthResponse> {
+  async register(dto: RegisterDto): Promise<void> {
     // Check if email exists
     const existingByEmail = await this.usersRepo.findOne({
       where: { email: dto.email },
@@ -95,25 +95,6 @@ export class AuthService {
 
     // Auto-create trading account for user (best-effort; errors bubble up)
     await this.accountService.ensureAccountForUser(Number(user.id));
-
-    // Generate tokens
-    const { accessToken, refreshToken } = await this.generateTokens({
-      sub: Number(user.id),
-      username: user.username,
-      email: user.email,
-    });
-
-    await this.storeRefreshToken(Number(user.id), refreshToken);
-
-    return {
-      user: {
-        id: Number(user.id),
-        username: user.username,
-        email: user.email,
-      },
-      accessToken,
-      refreshToken,
-    };
   }
 
   async login(dto: LoginDto): Promise<AuthResponse> {
@@ -231,6 +212,12 @@ export class AuthService {
     };
   }
 
+  async logout(userId: number): Promise<void> {
+    const key = `refresh_token:${userId}`;
+    await this.redisService.getClient().del(key);
+    this.logger.log(`User logged out: userId=${userId}`);
+  }
+
   private async generateTokens(payload: JwtPayload): Promise<{
     accessToken: string;
     refreshToken: string;
@@ -299,6 +286,22 @@ export class AuthService {
       secure: isProd,
       sameSite: isProd ? 'none' : 'lax',
       maxAge: refreshTtlMs,
+      path: '/',
+    });
+  }
+
+  clearAuthCookies(res: import('express').Response) {
+    const isProd = this.configService.get('NODE_ENV') === 'production';
+    res.clearCookie('access_token', {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
+      path: '/',
+    });
+    res.clearCookie('refresh_token', {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
       path: '/',
     });
   }
