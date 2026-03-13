@@ -16,6 +16,7 @@ import {
   ApiCreatedResponse,
   ApiOkResponse,
   ApiCookieAuth,
+  ApiBearerAuth,
   ApiQuery,
 } from '@nestjs/swagger';
 import { AccountService } from './account.service';
@@ -24,6 +25,7 @@ import { WithdrawDto } from './dto/withdraw.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @ApiTags('account')
+@ApiBearerAuth('access-token')
 @ApiCookieAuth('access_token')
 @UseGuards(JwtAuthGuard)
 @Controller('account')

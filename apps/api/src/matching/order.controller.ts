@@ -20,6 +20,7 @@ import {
   ApiQuery,
   ApiAcceptedResponse,
   ApiOkResponse,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OrderService } from './order.service';
@@ -27,6 +28,7 @@ import { PlaceOrderDto } from './dto/place-order.dto';
 import { CancelOrderDto } from './dto/cancel-order.dto';
 
 @ApiTags('orders')
+@ApiBearerAuth('access-token')
 @ApiCookieAuth('access_token')
 @UseGuards(JwtAuthGuard)
 @Controller('orders')

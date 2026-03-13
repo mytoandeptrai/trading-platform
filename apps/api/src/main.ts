@@ -61,6 +61,15 @@ async function bootstrap() {
       .setTitle('Trading Engine API')
       .setDescription('NestJS Trading POC - Backend API')
       .setVersion('1.0.0')
+      .addBearerAuth(
+        {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          in: 'header',
+        },
+        'access-token',
+      )
       .addCookieAuth('access_token', {
         type: 'apiKey',
         in: 'cookie',
