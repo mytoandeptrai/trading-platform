@@ -111,7 +111,9 @@ export class OrderService {
 
       if (dto.type === 'LIMIT') {
         if (isBid && dto.price) {
-          const required = dto.amount * dto.price;
+          // Lock value + fee so settlement can consume (value + buyerFee). Resting LIMIT = maker.
+          const value = dto.amount * dto.price;
+          const required = value * (1 + pairCfg.makerFeeRate);
           await this.balanceService.lockCashForOrder(
             qr,
             account.id,

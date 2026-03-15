@@ -157,13 +157,16 @@ export class MatchingProcessor extends WorkerHost {
       await qr.connect();
       await qr.startTransaction();
       let tradeId: string | null = null;
-      // Collect (pair, side, price, qty) for each LIMIT order that was filled; used after commit to update UI orderbook levels (Redis :levels / :levels:qty).
+      let fillQty = 0;
+      // Collect (pair, side, price, qty) for LIMIT orders; used after settlement to update Redis levels.
       const limitUpdates: {
         pair: string;
         isBid: boolean;
         price: number;
         qty: number;
       }[] = [];
+      let bidOrderId: string | null = null;
+      let askOrderId: string | null = null;
 
       try {
         // Lock both orders so no other job can match them at the same time.
@@ -191,12 +194,14 @@ export class MatchingProcessor extends WorkerHost {
           continue;
         }
 
-        // Trade uses maker (resting) order price. Value = price * qty for reporting.
+        fillQty = qty;
         const price = oppPrice; // maker price
         const value = price * qty;
 
         const bid = isBid ? lockedOrder : lockedOpp;
         const ask = isBid ? lockedOpp : lockedOrder;
+        bidOrderId = bid.id;
+        askOrderId = ask.id;
 
         const trade = qr.manager.create(TradeEntity, {
           bidOrderId: bid.id,
@@ -212,18 +217,7 @@ export class MatchingProcessor extends WorkerHost {
         const savedTrade = await qr.manager.save(trade);
         tradeId = savedTrade.id;
 
-        // Update filled/remaining/status on both orders. Settlement will move balances and consume locks.
-        const applyFill = (o: OrderEntity, fillQty: number) => {
-          const filled = parseFloat(o.filled) + fillQty;
-          const remaining2 = Math.max(parseFloat(o.amount) - filled, 0);
-          o.filled = filled.toString();
-          o.remaining = remaining2.toString();
-          o.status = remaining2 <= 0 ? 'COMPLETED' : 'PARTLY_FILLED';
-        };
-        applyFill(lockedOrder, qty);
-        applyFill(lockedOpp, qty);
-
-        // For UI orderbook: we need to subtract filled qty from aggregated levels. Only LIMIT orders have a resting price level.
+        // Record level updates for Redis (applied only after settlement succeeds).
         const recordLevelUpdate = (o: OrderEntity) => {
           if (o.orderType !== 'LIMIT' || !o.price) return;
           limitUpdates.push({
@@ -236,8 +230,7 @@ export class MatchingProcessor extends WorkerHost {
         recordLevelUpdate(lockedOrder);
         recordLevelUpdate(lockedOpp);
 
-        await qr.manager.save([lockedOrder, lockedOpp]);
-
+        // Commit only the trade. Order filled/remaining/status updated only after settlement succeeds.
         await qr.commitTransaction();
       } catch (e) {
         await qr.rollbackTransaction();
@@ -246,13 +239,31 @@ export class MatchingProcessor extends WorkerHost {
         await qr.release();
       }
 
-      if (!tradeId) return;
+      if (!tradeId || !bidOrderId || !askOrderId) return;
 
-      // --- Settlement: move cash/coin, fees, consume locks (SERIALIZABLE tx, idempotent) ---
+      // --- Settlement first. If it fails, orders are never updated (no "complete" without settlement). ---
       await this.settlementService.settleTrade(tradeId);
 
+      // --- Only after settlement: update order filled/remaining/status ---
+      const orderRepo = this.dataSource.getRepository(OrderEntity);
+      const [bidOrder, askOrder] = await Promise.all([
+        orderRepo.findOne({ where: { id: bidOrderId } }),
+        orderRepo.findOne({ where: { id: askOrderId } }),
+      ]);
+      if (bidOrder && askOrder) {
+        const applyFill = (o: OrderEntity, fillQty: number) => {
+          const filled = parseFloat(o.filled) + fillQty;
+          const remaining2 = Math.max(parseFloat(o.amount) - filled, 0);
+          o.filled = filled.toString();
+          o.remaining = remaining2.toString();
+          o.status = remaining2 <= 0 ? 'COMPLETED' : 'PARTLY_FILLED';
+        };
+        applyFill(bidOrder, fillQty);
+        applyFill(askOrder, fillQty);
+        await orderRepo.save([bidOrder, askOrder]);
+      }
+
       // --- UI orderbook (Redis :levels + :levels:qty): subtract filled qty at each affected price level ---
-      // adjustLevel(pair, isBid, price, -qty) decreases aggregated quantity; if total reaches 0, level is removed.
       for (const u of limitUpdates) {
         await this.orderbookService.adjustLevel(
           u.pair,
@@ -262,14 +273,12 @@ export class MatchingProcessor extends WorkerHost {
         );
       }
 
-      // Per-order book: remove opposing order from Redis ZSET when it is fully filled (so we don't return it as best again).
-      const updatedOpp = await this.dataSource
-        .getRepository(OrderEntity)
-        .findOne({
-          where: { id: oppOrder.id },
-        });
-      if (updatedOpp && updatedOpp.status === 'COMPLETED') {
-        await this.orderbookService.removeOrder(pair, !isBid, updatedOpp.id);
+      // Per-order book: remove from Redis ZSET when fully filled (both sides may have been on the book).
+      if (askOrder && askOrder.status === 'COMPLETED') {
+        await this.orderbookService.removeOrder(pair, false, askOrder.id);
+      }
+      if (bidOrder && bidOrder.status === 'COMPLETED') {
+        await this.orderbookService.removeOrder(pair, true, bidOrder.id);
       }
 
       // Loop continues: same incoming order may get more fills from other resting orders, or exit when no liquidity / remaining = 0.

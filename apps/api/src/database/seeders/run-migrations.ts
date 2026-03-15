@@ -28,6 +28,7 @@ async function runMigrations() {
       '005_create_transactions_table.sql',
       '006_create_tickers_table.sql',
       '007_create_candles_tables.sql',
+      '008_alter_lock_record_check.sql',
     ];
 
     console.log('\n🚀 Running database migrations...\n');
@@ -46,11 +47,20 @@ async function runMigrations() {
       try {
         await client.query(sql);
         console.log(`✅ ${file} completed\n`);
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-        console.error(`❌ Error running ${file}:`, errorMessage);
-        throw error;
+      } catch (error: unknown) {
+        const err = error as { code?: string; message?: string };
+        const alreadyExists =
+          err.code === '42P07' || // duplicate_table, duplicate_object (relation exists)
+          err.code === '42710' || // duplicate_object (index etc.)
+          (err.message?.includes('already exists') ?? false);
+        if (alreadyExists) {
+          console.warn(
+            `⚠️  ${file} skipped (object already exists). If this is a re-run, this is normal.\n`,
+          );
+        } else {
+          console.error(`❌ Error running ${file}:`, err.message ?? error);
+          throw error;
+        }
       }
     }
 

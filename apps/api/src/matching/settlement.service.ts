@@ -308,11 +308,12 @@ export class SettlementService {
       await qr.manager.save(coin);
     }
 
-    const newLockAmount = lockedAmount - consumeAmount;
+    const newLockAmount = Math.max(0, lockedAmount - consumeAmount);
     lock.lockAmount = newLockAmount.toString();
     if (newLockAmount <= 1e-12) {
       lock.status = 'UNLOCKED';
       lock.unlockedAt = new Date();
+      lock.lockAmount = '0';
     }
     await qr.manager.save(lock);
   }
