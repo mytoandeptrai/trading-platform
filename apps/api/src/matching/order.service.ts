@@ -156,6 +156,14 @@ export class OrderService {
       await qr.commitTransaction();
 
       if (dto.type === 'LIMIT') {
+        if (dto.price) {
+          await this.orderbookService.adjustLevel(
+            dto.pair,
+            isBid,
+            dto.price,
+            dto.amount,
+          );
+        }
         await this.orderbookService.addOrder(
           dto.pair,
           isBid,
@@ -257,6 +265,18 @@ export class OrderService {
         'Order cannot be canceled in current status',
         'INVALID_ORDER_STATUS',
       );
+    }
+
+    if (order.orderType === 'LIMIT' && order.price) {
+      const remaining = parseFloat(order.remaining);
+      if (remaining > 0) {
+        await this.orderbookService.adjustLevel(
+          order.pairName,
+          order.isBid,
+          parseFloat(order.price),
+          -remaining,
+        );
+      }
     }
 
     order.status = 'CANCELED';

@@ -21,8 +21,9 @@ export class OrderbookController {
           items: {
             type: 'object',
             properties: {
-              orderId: { type: 'string', example: '123' },
               price: { type: 'number', example: 50000 },
+              quantity: { type: 'number', example: 0.25 },
+              orderCount: { type: 'number', example: 5 }
             },
           },
         },
@@ -31,8 +32,9 @@ export class OrderbookController {
           items: {
             type: 'object',
             properties: {
-              orderId: { type: 'string', example: '456' },
               price: { type: 'number', example: 50100 },
+              quantity: { type: 'number', example: 0.1 },
+              orderCount: { type: 'number', example: 2 }
             },
           },
         },
