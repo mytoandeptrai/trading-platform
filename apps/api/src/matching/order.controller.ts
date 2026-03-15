@@ -138,6 +138,27 @@ export class OrderController {
     );
   }
 
+  @Post('cancel-all')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Cancel all active orders for the current user' })
+  @ApiOkResponse({
+    description: 'All active orders canceled. Returns count and list of order IDs.',
+    schema: {
+      type: 'object',
+      properties: {
+        canceled: { type: 'number', example: 3 },
+        orderIds: {
+          type: 'array',
+          items: { type: 'string' },
+          example: ['1', '2', '3'],
+        },
+      },
+    },
+  })
+  async cancelAllOrders(@Request() req) {
+    return this.orderService.cancelAllOrders(req.user.id);
+  }
+
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Cancel an order' })

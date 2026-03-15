@@ -465,6 +465,25 @@
             "description": "Cancel order by ID (if PENDING or PARTLY_FILLED). Unlocks remaining locked balance and removes from Redis book."
           },
           "response": []
+        },
+        {
+          "name": "Cancel All Orders",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/orders/cancel-all",
+              "host": ["{{base_url}}"],
+              "path": ["orders", "cancel-all"]
+            },
+            "description": "Cancel all active orders (PENDING, PARTLY_FILLED) for the current user. Unlocks balances, removes from Redis book, writes history. Response: { \"canceled\": number, \"orderIds\": string[] }."
+          },
+          "response": []
         }
       ]
     }

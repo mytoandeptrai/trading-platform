@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { InjectQueue } from '@nestjs/bullmq';
 import type { Queue } from 'bullmq';
 import { AccountEntity } from '../account/entities/account.entity';
@@ -306,5 +306,96 @@ export class OrderService {
     this.logger.log(
       `Order canceled: id=${order.id}, user=${userId}, pair=${order.pairName}`,
     );
+  }
+
+  /**
+   * Cancel all active orders (PENDING, PARTLY_FILLED) for the given user.
+   * DB updates run in a single transaction; Redis (orderbook) is updated after commit.
+   * Returns the number of canceled orders and their IDs.
+   */
+  async cancelAllOrders(
+    userId: number,
+  ): Promise<{ canceled: number; orderIds: string[] }> {
+    const qr = this.dataSource.createQueryRunner();
+    await qr.connect();
+    await qr.startTransaction();
+
+    const orderIds: string[] = [];
+    try {
+      const account = await qr.manager.findOne(AccountEntity, {
+        where: { userId: String(userId) },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!account) {
+        throw new BusinessException('Account not found', 'ACCOUNT_NOT_FOUND');
+      }
+
+      const orders = await qr.manager.find(OrderEntity, {
+        where: {
+          accountId: account.id,
+          status: In(['PENDING', 'PARTLY_FILLED']),
+        },
+        order: { placedAt: 'ASC' },
+      });
+
+      for (const order of orders) {
+        order.status = 'CANCELED';
+        await qr.manager.save(order);
+
+        await this.balanceService.unlockForOrder(order.id, qr);
+
+        const history = qr.manager.create(OrderHistoryEntity, {
+          orderId: order.id,
+          accountId: order.accountId,
+          pairName: order.pairName,
+          isBid: order.isBid,
+          orderType: order.orderType,
+          price: order.price,
+          amount: order.amount,
+          filled: order.filled,
+          status: order.status,
+          placedAt: order.placedAt,
+        });
+        await qr.manager.save(history);
+
+        orderIds.push(order.id);
+      }
+
+      await qr.commitTransaction();
+    } catch (error) {
+      await qr.rollbackTransaction();
+      throw error;
+    } finally {
+      await qr.release();
+    }
+
+    // Redis updates after commit: orderbook level aggregates and per-order ZSET
+    const orders = await this.orderRepo.find({
+      where: { id: In(orderIds) },
+    });
+    for (const order of orders) {
+      if (order.orderType === 'LIMIT' && order.price) {
+        const remaining = parseFloat(order.remaining);
+        if (remaining > 0) {
+          await this.orderbookService.adjustLevel(
+            order.pairName,
+            order.isBid,
+            parseFloat(order.price),
+            -remaining,
+          );
+        }
+      }
+      await this.orderbookService.removeOrder(
+        order.pairName,
+        order.isBid,
+        order.id,
+      );
+    }
+
+    this.logger.log(
+      `Cancel all orders: user=${userId}, canceled=${orderIds.length}, ids=[${orderIds.join(', ')}]`,
+    );
+
+    return { canceled: orderIds.length, orderIds };
   }
 }
