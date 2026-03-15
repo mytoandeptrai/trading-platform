@@ -16,4 +16,3 @@ export default registerAs(
     db: parseInt(process.env.REDIS_DB || '0', 10),
   }),
 );
-

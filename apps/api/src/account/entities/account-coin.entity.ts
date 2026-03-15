@@ -68,4 +68,3 @@ export class AccountCoinEntity {
   @JoinColumn({ name: 'account_id' })
   account: AccountEntity;
 }
-

@@ -10,7 +10,8 @@ import {
 export class RegisterDto {
   @ApiProperty({
     example: 'johndoe',
-    description: 'Username, 3-50 chars, letters, numbers, underscore, hyphen only',
+    description:
+      'Username, 3-50 chars, letters, numbers, underscore, hyphen only',
     minLength: 3,
     maxLength: 50,
   })

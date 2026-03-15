@@ -7,7 +7,7 @@ import { cn } from "@repo/ui/lib/utils"
 import { Label } from "@repo/ui/components/label"
 
 export interface FormWrapperProps<T extends FieldValues> {
-  form: UseFormReturn<T, any>;
+  form: UseFormReturn<T, unknown>;
   onSubmit: SubmitHandler<T>;
   children?: React.ReactNode;
   formId?: string;

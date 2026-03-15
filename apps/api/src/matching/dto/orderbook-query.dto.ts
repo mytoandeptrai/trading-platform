@@ -22,4 +22,3 @@ export class OrderbookQueryDto {
   @Min(1)
   levels?: number;
 }
-

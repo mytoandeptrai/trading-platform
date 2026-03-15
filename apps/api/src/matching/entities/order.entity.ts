@@ -87,4 +87,3 @@ export class OrderEntity {
   @Column({ name: 'expires_at', type: 'timestamp', nullable: true })
   expiresAt: Date | null;
 }
-

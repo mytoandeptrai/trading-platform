@@ -61,7 +61,8 @@ export class OrderController {
   @ApiOperation({ summary: 'Get order by ID' })
   @ApiParam({ name: 'id', description: 'Order ID', example: '1' })
   @ApiOkResponse({
-    description: 'Order details (id, pair, side, type, price, amount, filled, remaining, status, etc.)',
+    description:
+      'Order details (id, pair, side, type, price, amount, filled, remaining, status, etc.)',
     schema: {
       type: 'object',
       properties: {
@@ -85,9 +86,24 @@ export class OrderController {
 
   @Get()
   @ApiOperation({ summary: 'List orders with optional filters' })
-  @ApiQuery({ name: 'status', required: false, type: String, description: 'Filter by status (PENDING, COMPLETED, CANCELED, etc.)' })
-  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Max items (default 50)' })
-  @ApiQuery({ name: 'offset', required: false, type: Number, description: 'Offset for pagination (default 0)' })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    type: String,
+    description: 'Filter by status (PENDING, COMPLETED, CANCELED, etc.)',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Max items (default 50)',
+  })
+  @ApiQuery({
+    name: 'offset',
+    required: false,
+    type: Number,
+    description: 'Offset for pagination (default 0)',
+  })
   @ApiOkResponse({
     description: 'List of orders.',
     schema: {

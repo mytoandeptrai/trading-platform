@@ -151,7 +151,7 @@ export function InputFileDropzone(props: InputFileDropzoneProps) {
       }
     },
 
-    [files, maxFiles, multiple, onUpload, setFiles]
+    [files, maxFiles, multiple, onUpload, setFiles, toast]
   );
 
   function onRemove(index: number) {
@@ -256,6 +256,7 @@ function FileCard({ file, progress, onRemove }: FileCardProps) {
       <div className='flex flex-1 space-x-4'>
         {isFileWithPreview(file) ? (
           <ImageZoom className='border'>
+            {/* eslint-disable-next-line @next/next/no-img-element -- blob preview URL, not a static asset */}
             <img
               src={file.preview}
               alt={file.name}

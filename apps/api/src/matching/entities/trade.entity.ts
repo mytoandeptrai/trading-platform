@@ -85,4 +85,3 @@ export class TradeEntity {
   @Column({ name: 'settlement_time', type: 'timestamp', nullable: true })
   settlementTime: Date | null;
 }
-
