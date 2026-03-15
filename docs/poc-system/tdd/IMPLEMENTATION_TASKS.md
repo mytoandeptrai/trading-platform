@@ -307,12 +307,12 @@
 
 ### Testing
 
-- [ ] Unit test: Matching algorithm (price-time priority)
-- [ ] Unit test: Partial fills
-- [ ] Unit test: Multiple matches
-- [ ] Unit test: Price incompatibility
-- [ ] Unit test: Settlement success
-- [ ] Unit test: Settlement rollback
+- [x] Unit test: Matching algorithm (price-time priority)
+- [x] Unit test: Partial fills
+- [x] Unit test: Multiple matches
+- [x] Unit test: Price incompatibility
+- [x] Unit test: Settlement success
+- [x] Unit test: Settlement rollback
 - [ ] Manual test: Place 2 matching orders
 - [ ] Manual test: Verify trade executed
 - [ ] Manual test: Verify balances updated
