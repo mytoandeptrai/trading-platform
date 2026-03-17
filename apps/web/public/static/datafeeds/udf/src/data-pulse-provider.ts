@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { LibrarySymbolInfo, ResolutionString, SubscribeBarsCallback } from '../../../charting_library/datafeed-api';
 
 import {

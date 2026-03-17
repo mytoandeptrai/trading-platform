@@ -1,21 +1,19 @@
 import type { Metadata } from "next";
-import localFont from "next/font/local";
+import { Inter } from "next/font/google";
 import "@repo/ui/globals.css";
 import { ThemeProvider } from "@repo/ui/providers/theme-provider";
 import { Toaster } from "@repo/ui/components/sonner";
+import { QueryProvider } from "@/lib/providers/query-provider";
+import { ScrollToTop } from "@/components/scroll-to-top";
 
-const geistSans = localFont({
-  src: "./fonts/GeistVF.woff",
-  variable: "--font-geist-sans",
-});
-const geistMono = localFont({
-  src: "./fonts/GeistMonoVF.woff",
-  variable: "--font-geist-mono",
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
 });
 
 export const metadata: Metadata = {
-  title: "turbo-app-template starter",
-  description: "turbo-app-template starter kit",
+  title: "Crypto Trading Platform",
+  description: "Professional cryptocurrency trading platform",
 };
 
 export default function RootLayout({
@@ -25,19 +23,20 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}
-      >
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-          enableColorScheme
-        >
-          {children}
-          <Toaster richColors />
-        </ThemeProvider>
+      <body className={`${inter.variable} font-sans antialiased`}>
+        <QueryProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="dark"
+            enableSystem={false}
+            disableTransitionOnChange
+            enableColorScheme
+          >
+            {children}
+            <Toaster richColors />
+            <ScrollToTop />
+          </ThemeProvider>
+        </QueryProvider>
       </body>
     </html>
   );

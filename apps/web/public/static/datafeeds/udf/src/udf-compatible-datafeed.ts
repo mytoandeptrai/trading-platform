@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { UDFCompatibleDatafeedBase } from './udf-compatible-datafeed-base';
 import { QuotesProvider } from './quotes-provider';
 import { Requester } from './requester';

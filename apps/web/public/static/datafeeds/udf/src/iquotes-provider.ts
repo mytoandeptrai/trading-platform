@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { QuoteData } from '../../../charting_library/datafeed-api';
 
 import {

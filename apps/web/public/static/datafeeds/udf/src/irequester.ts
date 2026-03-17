@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { RequestParams, UdfErrorResponse, UdfResponse } from './helpers';
 
 export interface IRequester {

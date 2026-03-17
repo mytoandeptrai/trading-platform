@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Bar, HistoryMetadata, LibrarySymbolInfo, PeriodParams, ResolutionString, SubscribeBarsCallback, SymbolResolveExtension } from '../../../charting_library/datafeed-api';
 
 export interface IDataPulseProvider {

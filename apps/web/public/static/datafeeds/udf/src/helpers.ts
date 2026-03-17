@@ -1,3 +1,4 @@
+// @ts-nocheck
 export interface RequestParams {
 	[paramName: string]: string | string[] | number;
 }
