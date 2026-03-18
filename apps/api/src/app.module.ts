@@ -12,6 +12,8 @@ import { AccountModule } from './account/account.module';
 import { DatabaseModule } from './database/database.module';
 import { MatchingModule } from './matching/matching.module';
 import { RedisModule } from './common/redis/redis.module';
+import { EventsModule } from './events/events.module';
+import { TickerModule } from './ticker/ticker.module';
 
 @Module({
   imports: [
@@ -49,7 +51,9 @@ import { RedisModule } from './common/redis/redis.module';
     HealthModule,
     AuthModule,
     AccountModule,
+    EventsModule,
     MatchingModule,
+    TickerModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -1,0 +1,154 @@
+%% Trading Engine - Matching Flow
+%% Complete flow from order placement to market data updates
+
+flowchart TB
+    %% ========== USER INPUT ==========
+    User["👤 User Places Order<br/>SELL 0.1 BTC @ $50,000"]
+
+    %% ========== ORDER CONTROLLER ==========
+    User --> OrderController["🎯 OrderController<br/>POST /api/orders"]
+
+    %% ========== ORDER SERVICE ==========
+    OrderController --> OrderService["⚙️ OrderService.placeOrder()"]
+
+    %% ========== VALIDATION & BALANCE ==========
+    OrderService --> ValidateBalance{"💰 Check Balance<br/>&<br/>Lock Assets"}
+    ValidateBalance -->|Insufficient| ErrorResponse["❌ Error: Insufficient Balance"]
+    ValidateBalance -->|OK| LockBalance["🔒 Lock Balance<br/>SELL: Lock 0.1 BTC<br/>BUY: Lock USD"]
+
+    %% ========== DATABASE SAVE ==========
+    LockBalance --> SaveDB["💾 Save to Database<br/>OrderEntity<br/>status: PENDING<br/>remaining: 0.1"]
+
+    %% ========== REDIS ORDERBOOK ==========
+    SaveDB --> RedisOrderbook["📊 Add to Redis Orderbook<br/>(2 Structures)"]
+
+    RedisOrderbook --> PerOrderZSET["🔢 Per-Order ZSET<br/>orderbook:BTC/USD:ask<br/>ZADD score=50000 value='42'<br/>(For Matching - Price/Time Priority)"]
+
+    RedisOrderbook --> LevelAggregates["📈 Level Aggregates<br/>:levels (ZSET)<br/>:levels:qty (HASH)<br/>(For UI Display)"]
+
+    %% ========== BULLMQ JOB ==========
+    SaveDB --> QueueJob["🚀 Queue BullMQ Job<br/>{ orderId: 42 }"]
+
+    %% ========== API RESPONSE ==========
+    QueueJob --> ResponseUser["✅ Response to User<br/>{ orderId: 42, status: 'PENDING' }"]
+
+    %% ========== ORDERBOOK UI ==========
+    LevelAggregates -.-> OrderbookAPI["🌐 GET /api/orderbook<br/>Returns aggregated<br/>bids/asks for UI"]
+
+    %% ========== MATCHING ENGINE ==========
+    QueueJob --> MatchingProcessor["⚡ MatchingProcessor<br/>(BullMQ Worker)"]
+
+    MatchingProcessor --> LoadOrder["📖 Load Order from DB<br/>Order #42: SELL 0.1 @ $50,000"]
+
+    LoadOrder --> MatchLoop{"🔄 Match Loop<br/>remaining > 0?"}
+
+    MatchLoop -->|No| EndMatching["✓ Matching Complete"]
+
+    MatchLoop -->|Yes| GetBestOpposite["🎯 Get Best Opposite<br/>from Redis Per-Order ZSET<br/>ZREVRANGE :bid 0 0<br/>→ Order #35 @ $50,000"]
+
+    GetBestOpposite --> ValidateOpposite{"✓ Validate<br/>Opposite Order"}
+
+    ValidateOpposite -->|Stale/Invalid| RemoveFromBook["🗑️ Remove from Redis<br/>Continue to next"]
+    RemoveFromBook --> MatchLoop
+
+    ValidateOpposite -->|Valid| CheckPrice{"💲 Price Match?<br/>LIMIT: price ≤ limit<br/>MARKET: any price"}
+
+    CheckPrice -->|No Match| EndMatching
+
+    CheckPrice -->|Match| CalcQty["🧮 Calculate Match Qty<br/>matchQty = min(0.1, 0.05)<br/>= 0.05 BTC"]
+
+    %% ========== DATABASE TRANSACTION ==========
+    CalcQty --> DBTransaction["🔐 DB Transaction<br/>(FOR UPDATE Lock)"]
+
+    DBTransaction --> LockOrders["🔒 Lock Both Orders<br/>Pessimistic Write Lock"]
+
+    LockOrders --> CreateTrade["📝 Create Trade<br/>TradeEntity:<br/>- price: 50000<br/>- quantity: 0.05<br/>- value: 2500<br/>- settlement: PENDING"]
+
+    CreateTrade --> CommitTrade["✅ COMMIT Trade<br/>(Orders NOT updated yet)"]
+
+    %% ========== SETTLEMENT ==========
+    CommitTrade --> Settlement["💸 SettlementService<br/>.settleTrade(tradeId)"]
+
+    Settlement --> SettlementTx["🔐 Settlement Transaction"]
+
+    SettlementTx --> TransferAssets["💱 Transfer Assets<br/>Seller: Lock BTC → Unlock USD<br/>Buyer: Lock USD → Unlock BTC"]
+
+    TransferAssets --> DeductFees["💰 Deduct Fees<br/>Maker: 0.05%<br/>Taker: 0.1%"]
+
+    DeductFees --> UpdateSettlement["✅ Update Trade<br/>settlement: COMPLETED"]
+
+    UpdateSettlement --> PublishEvent["📡 Publish Event<br/>redis.publish('trade.executed', {<br/>  tradeId, pair, price,<br/>  quantity, value<br/>})"]
+
+    PublishEvent --> SettlementDone["✓ Settlement Complete"]
+
+    %% ========== UPDATE ORDERS ==========
+    SettlementDone --> UpdateOrders["📝 Update Orders<br/>(After Settlement)"]
+
+    UpdateOrders --> UpdateSellOrder["SELL #42:<br/>filled: 0.05<br/>remaining: 0.05<br/>status: PARTLY_FILLED"]
+
+    UpdateOrders --> UpdateBuyOrder["BUY #35:<br/>filled: 0.05<br/>remaining: 0<br/>status: COMPLETED"]
+
+    %% ========== UPDATE REDIS ORDERBOOK ==========
+    UpdateOrders --> UpdateRedisLevels["📊 Update Redis<br/>Level Aggregates<br/>HINCRBY :levels:qty<br/>'50000' -0.05"]
+
+    UpdateRedisLevels --> RemoveCompleted["🗑️ Remove Completed<br/>from Per-Order ZSET<br/>ZREM :bid '35'"]
+
+    RemoveCompleted --> MatchLoop
+
+    %% ========== EVENT SUBSCRIBERS ==========
+    PublishEvent --> EventSubscribers["📢 RedisSubscriberService<br/>Distributes to handlers"]
+
+    EventSubscribers --> TickerService["📊 TickerService<br/>.handleTradeExecuted()"]
+    EventSubscribers --> CandleService["📈 CandleService<br/>.handleTradeExecuted()"]
+
+    %% ========== TICKER SERVICE ==========
+    TickerService --> Calculate24h["🧮 Calculate 24h Stats<br/>Query all trades<br/>in last 24 hours"]
+
+    Calculate24h --> TickerStats["📊 Stats:<br/>- openPrice: first trade<br/>- highPrice: MAX(prices)<br/>- lowPrice: MIN(prices)<br/>- volume: SUM(qty)<br/>- quoteVolume: SUM(price×qty)<br/>- tradeCount: COUNT(*)"]
+
+    TickerStats --> UpsertTicker["💾 UPSERT Ticker<br/>INSERT ... ON CONFLICT<br/>UPDATE ticker table"]
+
+    UpsertTicker --> InvalidateCache["🗑️ Invalidate<br/>Redis Cache"]
+
+    %% ========== CANDLE SERVICE ==========
+    CandleService --> CalcOpenTime["⏰ Calculate Open Time<br/>1m: floor to minute<br/>5m: floor to 5-min bucket<br/>1h: floor to hour<br/>1d: floor to day"]
+
+    CalcOpenTime --> LazyClose["🔒 Lazy Close<br/>UPDATE candle_*<br/>SET is_closed = true<br/>WHERE open_time < current"]
+
+    LazyClose --> UpsertCandle["💾 UPSERT Candle<br/>INSERT ... ON CONFLICT<br/>(pair_name, open_time)<br/>DO UPDATE SET<br/>  high = GREATEST(...)<br/>  low = LEAST(...)<br/>  close = new_price<br/>  volume += qty"]
+
+    UpsertCandle --> Repeat4Timeframes["🔄 Repeat for<br/>4 Timeframes<br/>(1m, 5m, 1h, 1d)"]
+
+    %% ========== CRON JOB ==========
+    CronJob["⏰ Cron Job<br/>(Every 5 seconds)"]
+
+    CronJob --> UpdateBidAsk["📊 Update Ticker<br/>Bid/Ask Prices<br/>from Orderbook Snapshot"]
+
+    UpdateBidAsk --> GetSnapshot["🔍 Get Orderbook<br/>Snapshot (levels=1)<br/>Best bid/ask"]
+
+    GetSnapshot --> UpdateTickerBidAsk["💾 Update Ticker<br/>bidPrice, bidQty<br/>askPrice, askQty"]
+
+    %% ========== API ENDPOINTS ==========
+    InvalidateCache -.-> TickerAPI["🌐 GET /api/ticker/BTC%2FUSD<br/>Returns latest ticker<br/>(with Redis cache)"]
+
+    Repeat4Timeframes -.-> CandleAPI["🌐 GET /api/ticker/BTC%2FUSD/candles<br/>?timeframe=1m&limit=100<br/>Returns OHLCV data"]
+
+    %% ========== STYLING ==========
+    classDef userClass fill:#4CAF50,stroke:#2E7D32,color:#fff
+    classDef controllerClass fill:#2196F3,stroke:#1565C0,color:#fff
+    classDef serviceClass fill:#FF9800,stroke:#E65100,color:#fff
+    classDef dbClass fill:#9C27B0,stroke:#6A1B9A,color:#fff
+    classDef redisClass fill:#F44336,stroke:#C62828,color:#fff
+    classDef queueClass fill:#00BCD4,stroke:#00838F,color:#fff
+    classDef matchingClass fill:#FF5722,stroke:#D84315,color:#fff
+    classDef eventClass fill:#FFEB3B,stroke:#F57F17,color:#000
+    classDef apiClass fill:#607D8B,stroke:#37474F,color:#fff
+
+    class User userClass
+    class OrderController,OrderbookAPI,TickerAPI,CandleAPI controllerClass
+    class OrderService,TickerService,CandleService,Settlement,SettlementTx serviceClass
+    class SaveDB,LockBalance,DBTransaction,CreateTrade,UpdateOrders,UpsertTicker,UpsertCandle dbClass
+    class RedisOrderbook,PerOrderZSET,LevelAggregates,UpdateRedisLevels,RemoveCompleted,InvalidateCache redisClass
+    class QueueJob,MatchingProcessor queueClass
+    class MatchLoop,GetBestOpposite,CalcQty,TransferAssets,DeductFees matchingClass
+    class PublishEvent,EventSubscribers eventClass

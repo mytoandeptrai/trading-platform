@@ -29,6 +29,7 @@ async function runMigrations() {
       '006_create_tickers_table.sql',
       '007_create_candles_tables.sql',
       '008_alter_lock_record_check.sql',
+      '009_update_ticker_candles_schema.sql',
     ];
 
     console.log('\n🚀 Running database migrations...\n');

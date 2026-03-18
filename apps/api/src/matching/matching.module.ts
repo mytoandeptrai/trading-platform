@@ -35,5 +35,6 @@ import { SettlementService } from './settlement.service';
     MatchingProcessor,
     SettlementService,
   ],
+  exports: [OrderbookService],
 })
 export class MatchingModule {}

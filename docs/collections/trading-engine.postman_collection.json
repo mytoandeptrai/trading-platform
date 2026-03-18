@@ -285,6 +285,131 @@
       ]
     },
     {
+      "name": "Market Data",
+      "item": [
+        {
+          "name": "Get All Tickers",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/ticker",
+              "host": ["{{base_url}}"],
+              "path": ["ticker"]
+            },
+            "description": "Get 24h ticker statistics for all trading pairs. Returns array of tickers with price, volume, change%, bid/ask prices."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Ticker by Pair",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/ticker/BTC%2FUSD",
+              "host": ["{{base_url}}"],
+              "path": ["ticker", "BTC%2FUSD"]
+            },
+            "description": "Get 24h ticker statistics for a specific trading pair. Response includes:\n- lastPrice, openPrice, highPrice, lowPrice\n- priceChange, priceChangePercent\n- volume (base asset), quoteVolume (quote asset)\n- bidPrice, bidQty, askPrice, askQty\n- tradeCount, updatedAt"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Candles (1m)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/ticker/BTC%2FUSD/candles?timeframe=1m&limit=100",
+              "host": ["{{base_url}}"],
+              "path": ["ticker", "BTC%2FUSD", "candles"],
+              "query": [
+                {
+                  "key": "timeframe",
+                  "value": "1m",
+                  "description": "Candle timeframe: 1m, 5m, 1h, 1d"
+                },
+                {
+                  "key": "limit",
+                  "value": "100",
+                  "description": "Number of candles (max 1000, default 100)"
+                }
+              ]
+            },
+            "description": "Get OHLCV candle data for charting. Returns array of candles with:\n- openTime, closeTime\n- open, high, low, close\n- volume, tradesCount\n- isClosed (false for current/incomplete candle)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Candles (5m)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/ticker/BTC%2FUSD/candles?timeframe=5m&limit=200",
+              "host": ["{{base_url}}"],
+              "path": ["ticker", "BTC%2FUSD", "candles"],
+              "query": [
+                {
+                  "key": "timeframe",
+                  "value": "5m"
+                },
+                {
+                  "key": "limit",
+                  "value": "200"
+                }
+              ]
+            },
+            "description": "Get 5-minute candles (useful for medium-term charts)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Candles (1h)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/ticker/BTC%2FUSD/candles?timeframe=1h&limit=500",
+              "host": ["{{base_url}}"],
+              "path": ["ticker", "BTC%2FUSD", "candles"],
+              "query": [
+                {
+                  "key": "timeframe",
+                  "value": "1h"
+                },
+                {
+                  "key": "limit",
+                  "value": "500"
+                }
+              ]
+            },
+            "description": "Get 1-hour candles (useful for daily/weekly views)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Candles (1d)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/ticker/BTC%2FUSD/candles?timeframe=1d&limit=365",
+              "host": ["{{base_url}}"],
+              "path": ["ticker", "BTC%2FUSD", "candles"],
+              "query": [
+                {
+                  "key": "timeframe",
+                  "value": "1d"
+                },
+                {
+                  "key": "limit",
+                  "value": "365"
+                }
+              ]
+            },
+            "description": "Get daily candles (useful for yearly charts)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "Orders",
       "item": [
         {
@@ -491,7 +616,7 @@
   "variable": [
     {
       "key": "base_url",
-      "value": "http://localhost:3001/api"
+      "value": "http://localhost:6868/api"
     },
     {
       "key": "access_token",
