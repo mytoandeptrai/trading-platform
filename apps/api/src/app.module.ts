@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import jwtConfig from './config/jwt.config';
 import redisConfig from './config/redis.config';
 import { AppController } from './app.controller';
@@ -14,6 +15,7 @@ import { MatchingModule } from './matching/matching.module';
 import { RedisModule } from './common/redis/redis.module';
 import { EventsModule } from './events/events.module';
 import { TickerModule } from './ticker/ticker.module';
+import { WebSocketModule } from './websocket/websocket.module';
 
 @Module({
   imports: [
@@ -21,6 +23,15 @@ import { TickerModule } from './ticker/ticker.module';
       isGlobal: true,
       load: [jwtConfig, redisConfig],
       envFilePath: '.env',
+    }),
+    EventEmitterModule.forRoot({
+      wildcard: false,
+      delimiter: '.',
+      newListener: false,
+      removeListener: false,
+      maxListeners: 10,
+      verboseMemoryLeak: false,
+      ignoreErrors: false,
     }),
     BullModule.forRootAsync({
       inject: [ConfigService],
@@ -54,6 +65,7 @@ import { TickerModule } from './ticker/ticker.module';
     EventsModule,
     MatchingModule,
     TickerModule,
+    WebSocketModule,
   ],
   controllers: [AppController],
   providers: [AppService],

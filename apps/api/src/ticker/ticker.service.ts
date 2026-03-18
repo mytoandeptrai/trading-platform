@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { DataSource, Repository } from 'typeorm';
 import { RedisService } from '../common/redis/redis.service';
 import { RedisSubscriberService } from '../events/redis-subscriber.service';
@@ -32,6 +33,7 @@ export class TickerService implements OnModuleInit {
     private readonly redisSubscriber: RedisSubscriberService,
     private readonly redisService: RedisService,
     private readonly orderbookService: OrderbookService,
+    private readonly eventEmitter: EventEmitter2,
   ) {
     this.tickerRepo = this.dataSource.getRepository(TickerEntity);
   }
@@ -81,6 +83,32 @@ export class TickerService implements OnModuleInit {
 
       // Invalidate Redis cache
       await this.invalidateCache(pair);
+
+      // Get updated ticker for WebSocket broadcast
+      const updatedTicker = await this.tickerRepo.findOne({
+        where: { pairName: pair },
+      });
+
+      if (updatedTicker) {
+        // Emit ticker.update event for WebSocket broadcast
+        this.eventEmitter.emit('ticker.update', {
+          pairName: updatedTicker.pairName,
+          lastPrice: updatedTicker.lastPrice,
+          openPrice: updatedTicker.openPrice,
+          highPrice: updatedTicker.highPrice,
+          lowPrice: updatedTicker.lowPrice,
+          volume: updatedTicker.volume,
+          quoteVolume: updatedTicker.quoteVolume,
+          priceChange: updatedTicker.priceChange,
+          priceChangePercent: updatedTicker.priceChangePercent,
+          bidPrice: updatedTicker.bidPrice,
+          bidQty: updatedTicker.bidQty,
+          askPrice: updatedTicker.askPrice,
+          askQty: updatedTicker.askQty,
+          tradeCount: updatedTicker.tradeCount,
+          updatedAt: updatedTicker.updatedAt,
+        });
+      }
     } catch (error: any) {
       this.logger.error(
         `Failed to update ticker for trade=${tradeId}: ${error.message}`,
@@ -175,6 +203,20 @@ export class TickerService implements OnModuleInit {
 
           // Invalidate cache
           await this.invalidateCache(pair);
+
+          // Emit orderbook.update event for WebSocket broadcast
+          this.eventEmitter.emit('orderbook.update', {
+            pairName: pair,
+            bids: snapshot.bids.map((b) => ({
+              price: b.price.toString(),
+              quantity: b.quantity.toString(),
+            })),
+            asks: snapshot.asks.map((a) => ({
+              price: a.price.toString(),
+              quantity: a.quantity.toString(),
+            })),
+            timestamp: new Date(),
+          });
         }
       }
     } catch (error: any) {

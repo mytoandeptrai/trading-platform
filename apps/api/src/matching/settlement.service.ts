@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { DataSource } from 'typeorm';
 import { RedisService } from '../common/redis/redis.service';
 import { TradeEntity } from './entities/trade.entity';
@@ -19,6 +20,7 @@ export class SettlementService {
   constructor(
     private readonly dataSource: DataSource,
     private readonly redisService: RedisService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   private get redis() {
@@ -202,7 +204,7 @@ export class SettlementService {
 
       await qr.commitTransaction();
 
-      // Publish events (Phase 4)
+      // Publish events (Phase 4 - Redis pub/sub for inter-service communication)
       await this.redis.publish(
         'trade.executed',
         JSON.stringify({
@@ -223,6 +225,94 @@ export class SettlementService {
           tradeId: trade.id,
         }),
       );
+
+      // Emit EventEmitter2 events (Phase 6 - WebSocket real-time notifications)
+      // Reload orders to get updated status
+      const updatedBidOrder = await this.dataSource
+        .getRepository(OrderEntity)
+        .findOne({ where: { id: trade.bidOrderId } });
+      const updatedAskOrder = await this.dataSource
+        .getRepository(OrderEntity)
+        .findOne({ where: { id: trade.askOrderId } });
+
+      // Emit trade.executed event
+      this.eventEmitter.emit('trade.executed', {
+        tradeId: trade.id,
+        pairName: trade.pairName,
+        price: trade.price,
+        quantity: trade.quantity,
+        value: value.toString(),
+        buyOrderId: trade.bidOrderId,
+        sellOrderId: trade.askOrderId,
+        buyUserId: bidAccount.userId.toString(),
+        sellUserId: askAccount.userId.toString(),
+        executedAt: trade.settlementTime,
+      });
+
+      // Emit order.matched events for both orders
+      if (updatedBidOrder) {
+        const bidRemaining = parseFloat(updatedBidOrder.remaining);
+        const bidFilled = parseFloat(updatedBidOrder.filled);
+        this.eventEmitter.emit('order.matched', {
+          orderId: updatedBidOrder.id,
+          userId: bidAccount.userId.toString(),
+          pairName: updatedBidOrder.pairName,
+          side: 'BUY',
+          price: updatedBidOrder.price,
+          quantity: updatedBidOrder.amount,
+          matchedQuantity: qty.toString(),
+          remainingQuantity: bidRemaining.toString(),
+          oppositeOrderId: trade.askOrderId,
+        });
+
+        // If order is fully filled, emit order.filled
+        if (
+          updatedBidOrder.status === 'FILLED' ||
+          updatedBidOrder.status === 'COMPLETED' ||
+          bidRemaining <= 0
+        ) {
+          this.eventEmitter.emit('order.filled', {
+            orderId: updatedBidOrder.id,
+            userId: bidAccount.userId.toString(),
+            pairName: updatedBidOrder.pairName,
+            side: 'BUY',
+            filledQuantity: bidFilled.toString(),
+            averagePrice: updatedBidOrder.price || '0',
+          });
+        }
+      }
+
+      if (updatedAskOrder) {
+        const askRemaining = parseFloat(updatedAskOrder.remaining);
+        const askFilled = parseFloat(updatedAskOrder.filled);
+        this.eventEmitter.emit('order.matched', {
+          orderId: updatedAskOrder.id,
+          userId: askAccount.userId.toString(),
+          pairName: updatedAskOrder.pairName,
+          side: 'SELL',
+          price: updatedAskOrder.price,
+          quantity: updatedAskOrder.amount,
+          matchedQuantity: qty.toString(),
+          remainingQuantity: askRemaining.toString(),
+          oppositeOrderId: trade.bidOrderId,
+        });
+
+        // If order is fully filled, emit order.filled
+        if (
+          updatedAskOrder.status === 'FILLED' ||
+          updatedAskOrder.status === 'COMPLETED' ||
+          askRemaining <= 0
+        ) {
+          this.eventEmitter.emit('order.filled', {
+            orderId: updatedAskOrder.id,
+            userId: askAccount.userId.toString(),
+            pairName: updatedAskOrder.pairName,
+            side: 'SELL',
+            filledQuantity: askFilled.toString(),
+            averagePrice: updatedAskOrder.price || '0',
+          });
+        }
+      }
     } catch (error) {
       await qr.rollbackTransaction();
       // Best effort: mark trade failed (keep locks for manual cleanup as per TDD)
