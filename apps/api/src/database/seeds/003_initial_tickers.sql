@@ -1,42 +1,117 @@
 -- Seed: Initial ticker and historical candle data for trading pairs
 -- Created: 2026-03-12
--- Updated: 2026-03-13 - add ~2,000 1m candles per pair for testing
+-- Updated: 2026-03-19 - update ticker schema to match migration 009
 
 -- 1) Seed latest ticker snapshot (1 row per pair)
+-- Updated to match new ticker schema with all required fields
 INSERT INTO ticker (
   pair_name,
   last_price,
   open_price,
   high_price,
   low_price,
+  price_change,
+  price_change_percent,
   volume,
+  quote_volume,
   bid_price,
   bid_qty,
   ask_price,
   ask_qty,
-  change_percent,
+  trade_count,
   updated_at
 )
 VALUES
-  ('BTC/USD', 50000.00, 49500.00, 50500.00, 49000.00, 0, 49950.00, 0, 50050.00, 0, 1.01, NOW()),
-  ('ETH/USD', 3000.00, 2950.00, 3050.00, 2900.00, 0, 2995.00, 0, 3005.00, 0, 1.69, NOW()),
-  ('BTC/USDT', 50010.00, 49510.00, 50510.00, 49010.00, 0, 49960.00, 0, 50060.00, 0, 1.01, NOW()),
-  ('ETH/USDT', 3002.00, 2952.00, 3052.00, 2902.00, 0, 2997.00, 0, 3007.00, 0, 1.69, NOW())
+  -- BTC/USD: Base price $50,000
+  (
+    'BTC/USD',
+    '50000.00000000',      -- last_price
+    '49500.00000000',      -- open_price (24h ago)
+    '50500.00000000',      -- high_price (24h)
+    '49000.00000000',      -- low_price (24h)
+    '500.00000000',        -- price_change (+$500)
+    '1.0101',              -- price_change_percent (+1.01%)
+    '125.50000000',        -- volume (BTC)
+    '6275000.00000000',    -- quote_volume (USD)
+    '49950.00000000',      -- bid_price (best buy)
+    '0.50000000',          -- bid_qty
+    '50050.00000000',      -- ask_price (best sell)
+    '0.30000000',          -- ask_qty
+    42,                    -- trade_count
+    NOW()
+  ),
+  -- ETH/USD: Base price $3,000
+  (
+    'ETH/USD',
+    '3000.00000000',
+    '2950.00000000',
+    '3050.00000000',
+    '2900.00000000',
+    '50.00000000',
+    '1.6949',
+    '850.75000000',
+    '2552250.00000000',
+    '2995.00000000',
+    '5.00000000',
+    '3005.00000000',
+    '3.50000000',
+    156,
+    NOW()
+  ),
+  -- BTC/USDT: Base price $50,010
+  (
+    'BTC/USDT',
+    '50010.00000000',
+    '49510.00000000',
+    '50510.00000000',
+    '49010.00000000',
+    '500.00000000',
+    '1.0101',
+    '98.25000000',
+    '4913122.50000000',
+    '49960.00000000',
+    '0.45000000',
+    '50060.00000000',
+    '0.35000000',
+    38,
+    NOW()
+  ),
+  -- ETH/USDT: Base price $3,002
+  (
+    'ETH/USDT',
+    '3002.00000000',
+    '2952.00000000',
+    '3052.00000000',
+    '2902.00000000',
+    '50.00000000',
+    '1.6937',
+    '725.80000000',
+    '2178251.60000000',
+    '2997.00000000',
+    '4.80000000',
+    '3007.00000000',
+    '3.20000000',
+    134,
+    NOW()
+  )
 ON CONFLICT (pair_name) DO UPDATE SET
   last_price = EXCLUDED.last_price,
   open_price = EXCLUDED.open_price,
   high_price = EXCLUDED.high_price,
   low_price = EXCLUDED.low_price,
+  price_change = EXCLUDED.price_change,
+  price_change_percent = EXCLUDED.price_change_percent,
   volume = EXCLUDED.volume,
+  quote_volume = EXCLUDED.quote_volume,
   bid_price = EXCLUDED.bid_price,
   bid_qty = EXCLUDED.bid_qty,
   ask_price = EXCLUDED.ask_price,
   ask_qty = EXCLUDED.ask_qty,
-  change_percent = EXCLUDED.change_percent,
+  trade_count = EXCLUDED.trade_count,
   updated_at = NOW();
 
 -- 2) Seed historical 1-minute candles (~2,000 rows per pair)
---    This creates synthetic OHLCV data for each pair for the last ~2,000 minutes.
+--    This creates synthetic OHLCV data for each pair for the last ~2,000 minutes (~33 hours).
 WITH base_pairs AS (
   SELECT
     p AS pair_name,
@@ -355,8 +430,53 @@ SELECT
   open_price,
   high_price,
   low_price,
+  price_change,
+  price_change_percent,
   volume,
-  change_percent,
+  quote_volume,
+  trade_count,
+  bid_price,
+  bid_qty,
+  ask_price,
+  ask_qty,
   updated_at
 FROM ticker
 ORDER BY pair_name;
+
+-- Display candle counts
+SELECT
+  'candle_1m' AS table_name,
+  pair_name,
+  COUNT(*) AS candle_count,
+  MIN(open_time) AS earliest,
+  MAX(open_time) AS latest
+FROM candle_1m
+GROUP BY pair_name
+UNION ALL
+SELECT
+  'candle_5m',
+  pair_name,
+  COUNT(*),
+  MIN(open_time),
+  MAX(open_time)
+FROM candle_5m
+GROUP BY pair_name
+UNION ALL
+SELECT
+  'candle_1h',
+  pair_name,
+  COUNT(*),
+  MIN(open_time),
+  MAX(open_time)
+FROM candle_1h
+GROUP BY pair_name
+UNION ALL
+SELECT
+  'candle_1d',
+  pair_name,
+  COUNT(*),
+  MIN(open_time),
+  MAX(open_time)
+FROM candle_1d
+GROUP BY pair_name
+ORDER BY table_name, pair_name;
