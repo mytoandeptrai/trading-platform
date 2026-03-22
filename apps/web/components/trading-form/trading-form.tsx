@@ -19,7 +19,7 @@ function formatNumericInput(value: string): string {
   }
 
   // Limit to 2 decimal places
-  if (parts.length === 2 && parts[1].length > 2) {
+  if (parts.length === 2 && parts[1] && parts[1].length > 2) {
     cleaned = parts[0] + '.' + parts[1].substring(0, 2);
   }
 

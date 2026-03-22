@@ -44,10 +44,12 @@ export function SocketProvider({ children }: SocketProviderProps) {
   const [status, setStatus] = useState<ConnectionStatus>(ConnectionStatus.DISCONNECTED);
   const [subscribedPairs, setSubscribedPairs] = useState<Set<string>>(new Set());
   const [isSocketAuthenticated, setIsSocketAuthenticated] = useState(false);
-  const { accessToken, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   useEffect(() => {
-    // Connect to UnifiedGateway (optional auth)
+    // Connect to UnifiedGateway with cookie-based authentication
+    // Note: Authentication is handled via cookies (withCredentials: true)
+    // The backend will verify the access_token cookie if present
     setStatus(ConnectionStatus.CONNECTING);
 
     const socketConfig: any = {
@@ -55,15 +57,8 @@ export function SocketProvider({ children }: SocketProviderProps) {
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionAttempts: 5,
-      withCredentials: true,
+      withCredentials: true, // Send cookies for authentication
     };
-
-    // Add JWT token if authenticated
-    if (isAuthenticated && accessToken) {
-      socketConfig.auth = {
-        token: accessToken,
-      };
-    }
 
     const socket = io(`${SOCKET_URL}/ws`, socketConfig);
     socketRef.current = socket;
@@ -120,7 +115,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
       setStatus(ConnectionStatus.DISCONNECTED);
       setIsSocketAuthenticated(false);
     };
-  }, [isAuthenticated, accessToken]); // Reconnect when auth changes
+  }, [isAuthenticated]); // Reconnect when auth changes
 
   /**
    * Register a listener for a socket event

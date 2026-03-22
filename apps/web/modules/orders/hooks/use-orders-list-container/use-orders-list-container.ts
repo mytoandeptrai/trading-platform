@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 
 export function useOrdersListContainer(status?: string) {
   const { isAuthenticated } = useAuth();
-  const { data: orders = [], isLoading } = useOrders(status, isAuthenticated);
+  const { data, isLoading } = useOrders(status, isAuthenticated);
   const { mutate: cancelOrder } = useCancelOrder();
 
   const handleCancelOrder = (orderId: string) => {
@@ -23,8 +23,11 @@ export function useOrdersListContainer(status?: string) {
   };
 
   return {
-    orders,
+    orders: data?.orders ?? [],
     isLoading,
     onCancelOrder: handleCancelOrder,
+    total: data?.total,
+    limit: data?.limit,
+    offset: data?.offset,
   };
 }

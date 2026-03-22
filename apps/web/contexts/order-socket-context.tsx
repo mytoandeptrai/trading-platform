@@ -27,17 +27,19 @@ export function OrderSocketProvider({ children }: OrderSocketProviderProps) {
   const socketRef = useRef<Socket | null>(null);
   const [status, setStatus] = useState<ConnectionStatus>(ConnectionStatus.DISCONNECTED);
   const [subscribedPairs, setSubscribedPairs] = useState<Set<string>>(new Set());
-  const { accessToken, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   useEffect(() => {
-    // Only connect if authenticated with access token
-    if (!isAuthenticated || !accessToken) {
+    // Only connect if authenticated
+    // Note: Authentication is handled via cookies (withCredentials: true)
+    // The backend OrderGateway will verify the access_token cookie
+    if (!isAuthenticated) {
       console.log('[OrderSocket] Not authenticated, skipping connection');
       setStatus(ConnectionStatus.DISCONNECTED);
       return;
     }
 
-    // Connect to OrderGateway with authentication
+    // Connect to OrderGateway with cookie-based authentication
     setStatus(ConnectionStatus.CONNECTING);
 
     const socket = io(`${SOCKET_URL}/orders`, {
@@ -45,10 +47,7 @@ export function OrderSocketProvider({ children }: OrderSocketProviderProps) {
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionAttempts: 5,
-      withCredentials: true,
-      auth: {
-        token: accessToken, // Send JWT token for authentication
-      },
+      withCredentials: true, // Send cookies for authentication
     });
 
     socketRef.current = socket;
@@ -96,7 +95,7 @@ export function OrderSocketProvider({ children }: OrderSocketProviderProps) {
       socketRef.current = null;
       setStatus(ConnectionStatus.DISCONNECTED);
     };
-  }, [isAuthenticated, accessToken]); // Reconnect when auth changes
+  }, [isAuthenticated]); // Reconnect when auth changes
 
   /**
    * Register a listener for a socket event
