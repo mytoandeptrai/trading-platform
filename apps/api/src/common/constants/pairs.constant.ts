@@ -52,4 +52,3 @@ export const TRADING_PAIRS: TradingPairConfig[] = [
 export function getPairConfig(name: string): TradingPairConfig | undefined {
   return TRADING_PAIRS.find((p) => p.name === name);
 }
-

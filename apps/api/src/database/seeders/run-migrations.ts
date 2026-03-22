@@ -7,13 +7,34 @@ import * as dotenv from 'dotenv';
 dotenv.config({ path: path.join(__dirname, '../../../.env') });
 
 async function runMigrations() {
-  const client = new Client({
+  const sslEnabled = process.env.DB_SSL_ENABLED === 'true';
+
+  const clientConfig: any = {
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT || '5432'),
     user: process.env.DB_USERNAME || 'trading',
     password: process.env.DB_PASSWORD || 'trading_dev',
     database: process.env.DB_NAME || 'tradingengine',
-  });
+  };
+
+  // Add SSL config if enabled (for Aiven, Render, etc.)
+  if (sslEnabled) {
+    const caCertPath = process.env.DB_SSL_CA_PATH;
+    if (caCertPath) {
+      const fullPath = path.join(__dirname, '../../../', caCertPath);
+      const ca = fs.readFileSync(fullPath, 'utf8');
+      clientConfig.ssl = {
+        rejectUnauthorized: true,
+        ca,
+      };
+      console.log('🔐 SSL enabled with CA certificate');
+    } else {
+      clientConfig.ssl = { rejectUnauthorized: false };
+      console.log('🔐 SSL enabled without CA certificate');
+    }
+  }
+
+  const client = new Client(clientConfig);
 
   try {
     console.log('🔌 Connecting to database...');
@@ -28,6 +49,9 @@ async function runMigrations() {
       '005_create_transactions_table.sql',
       '006_create_tickers_table.sql',
       '007_create_candles_tables.sql',
+      '008_alter_lock_record_check.sql',
+      '009_update_ticker_candles_schema.sql',
+      '010_create_trading_pairs_table.sql',
     ];
 
     console.log('\n🚀 Running database migrations...\n');
@@ -46,11 +70,20 @@ async function runMigrations() {
       try {
         await client.query(sql);
         console.log(`✅ ${file} completed\n`);
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-        console.error(`❌ Error running ${file}:`, errorMessage);
-        throw error;
+      } catch (error: unknown) {
+        const err = error as { code?: string; message?: string };
+        const alreadyExists =
+          err.code === '42P07' || // duplicate_table, duplicate_object (relation exists)
+          err.code === '42710' || // duplicate_object (index etc.)
+          (err.message?.includes('already exists') ?? false);
+        if (alreadyExists) {
+          console.warn(
+            `⚠️  ${file} skipped (object already exists). If this is a re-run, this is normal.\n`,
+          );
+        } else {
+          console.error(`❌ Error running ${file}:`, err.message ?? error);
+          throw error;
+        }
       }
     }
 

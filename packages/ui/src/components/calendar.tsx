@@ -132,6 +132,7 @@ function Calendar({
         ...classNames,
       }}
       components={{
+        /* eslint-disable-next-line react/prop-types -- internal DayPicker API callback props */
         Root: ({ className, rootRef, ...props }) => {
           return (
             <div
@@ -142,6 +143,7 @@ function Calendar({
             />
           )
         },
+        /* eslint-disable-next-line react/prop-types -- internal DayPicker API callback props */
         Chevron: ({ className, orientation, ...props }) => {
           if (orientation === "left") {
             return (

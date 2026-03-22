@@ -12,13 +12,13 @@
 | Phase | Tasks | Completed | Progress | Status |
 |-------|-------|-----------|----------|--------|
 | **Phase 1: Foundation** | 7 | 6 | 86% | ✅ Near Complete |
-| **Phase 2: Auth & Account** | 14 | 0 | 0% | ⏳ Not Started |
-| **Phase 3: Order Management** | 12 | 10 | 83% | ✅ Near Complete |
-| **Phase 4: Matching Engine** | 15 | 13 | 87% | ✅ Near Complete |
-| **Phase 5: Market Data** | 8 | 0 | 0% | ⏳ Not Started |
-| **Phase 6: WebSocket** | 6 | 0 | 0% | ⏳ Not Started |
-| **Phase 7: Testing & Docs** | 8 | 0 | 0% | ⏳ Not Started |
-| **TOTAL** | **70** | **29** | **41%** | 🟡 In Progress |
+| **Phase 2: Auth & Account** | 14 | 14 | 100% | ✅ Complete |
+| **Phase 3: Order Management** | 12 | 12 | 100% | ✅ Complete |
+| **Phase 4: Matching Engine** | 15 | 15 | 100% | ✅ Complete |
+| **Phase 5: Market Data** | 16 | 16 | 100% | ✅ Complete |
+| **Phase 6: WebSocket** | 6 | 6 | 100% | ✅ Complete |
+| **Phase 7: Testing & Docs** | 8 | 2 | 25% | 🟡 In Progress |
+| **TOTAL** | **78** | **71** | **91%** | 🟢 Near Complete |
 
 ---
 
@@ -320,108 +320,199 @@
 
 ---
 
-## 📈 Phase 5: Market Data (Week 4)
+## 📈 Phase 5: Market Data (Week 4) ✅ COMPLETE
 
 **Goal**: Ticker & candlestick data
 
 **Duration**: 2-3 days
 
+**Completed**: 2026-03-19
+
+### Events Infrastructure
+
+- [x] Generate EventsModule (Global module)
+- [x] Create RedisSubscriberService
+  - [x] Generic pub/sub subscriber with Map<channel, Set<handlers>>
+  - [x] Support multiple handlers per channel
+  - [x] Auto-subscribe/unsubscribe management
+  - [x] Error handling per handler
+- [x] Export for reusability across modules
+
 ### Ticker Module
 
-- [ ] Generate Ticker module
-- [ ] Generate Ticker service
-- [ ] Generate Ticker controller
-- [ ] Ticker entity (ticker table)
-- [ ] Update ticker on trade
-  - [ ] Subscribe to trade.executed events
-  - [ ] Calculate 24h stats (open, high, low, volume)
-  - [ ] UPDATE or INSERT ticker data
-  - [ ] Cache in Redis (TTL: 60s)
-- [ ] Get ticker endpoint (`GET /ticker/:pair`)
-  - [ ] Check Redis cache first
-  - [ ] Fallback to database
-  - [ ] Return ticker data
-- [ ] Get all tickers endpoint (`GET /ticker`)
-  - [ ] Return all active pairs
-  - [ ] Include last price, volume, change%
+- [x] Generate Ticker module
+- [x] Generate Ticker service
+- [x] Generate Ticker controller
+- [x] Ticker entity (Binance-like schema)
+  - [x] lastPrice, openPrice, highPrice, lowPrice
+  - [x] priceChange, priceChangePercent
+  - [x] volume (base), quoteVolume (quote)
+  - [x] bidPrice, bidQty, askPrice, askQty
+  - [x] tradeCount
+  - [x] Created/Updated timestamps
+- [x] Update ticker on trade
+  - [x] Subscribe to trade.executed events
+  - [x] Calculate 24h stats (from DB trades)
+  - [x] UPSERT ticker data (ON CONFLICT)
+  - [x] Cache in Redis (TTL: 60s)
+  - [x] Invalidate cache on updates
+- [x] Cron job: Update bid/ask from orderbook
+  - [x] @Cron every 5 seconds
+  - [x] Get orderbook snapshot (best bid/ask)
+  - [x] Update ticker with latest prices
+- [x] Get ticker endpoint (`GET /ticker/:pair`)
+  - [x] Check Redis cache first
+  - [x] Fallback to database
+  - [x] Return ticker data
+- [x] Get all tickers endpoint (`GET /ticker`)
+  - [x] Return all active pairs
+  - [x] Include last price, volume, change%
+  - [x] Redis cache support
 
 ### Candle Service
 
-- [ ] Generate Candle service
-- [ ] Candle entities (candle_1m, candle_5m, candle_1h, candle_1d)
-- [ ] Update candles on trade
-  - [ ] Subscribe to trade.executed events
-  - [ ] Determine candle timeframe
-  - [ ] UPSERT candle data (open, high, low, close, volume)
-  - [ ] Mark candle as closed when period ends
-- [ ] Get candles endpoint (`GET /candles/:pair/:timeframe`)
-  - [ ] Validate timeframe (1m, 5m, 1h, 1d)
-  - [ ] Query candles with limit
-  - [ ] Sort by open_time DESC
-  - [ ] Return OHLCV data
+- [x] Generate Candle service
+- [x] Candle entities (4 timeframes)
+  - [x] Candle1mEntity (1-minute)
+  - [x] Candle5mEntity (5-minute)
+  - [x] Candle1hEntity (1-hour)
+  - [x] Candle1dEntity (1-day)
+  - [x] UNIQUE constraint (pair_name, open_time)
+  - [x] Indexes for queries
+- [x] Update candles on trade
+  - [x] Subscribe to trade.executed events
+  - [x] Calculate openTime for each timeframe (time bucketing)
+  - [x] Lazy close strategy (close previous candles)
+  - [x] UPSERT candle data (ON CONFLICT)
+    - [x] open: never changes (first trade)
+    - [x] high: GREATEST(high, price)
+    - [x] low: LEAST(low, price)
+    - [x] close: always last trade price
+    - [x] volume: cumulative
+    - [x] tradesCount: increment
+- [x] Get candles endpoint (`GET /ticker/:pair/candles`)
+  - [x] Query parameter: timeframe (1m, 5m, 1h, 1d)
+  - [x] Query parameter: limit (default 100, max 1000)
+  - [x] Query candles with pagination
+  - [x] Sort by open_time DESC
+  - [x] Return OHLCV data
+
+### Database Migration
+
+- [x] Migration 009: Update ticker & candles schema
+  - [x] Convert id from SERIAL/BIGSERIAL to UUID
+  - [x] Add missing ticker fields (price_change, quote_volume, trade_count)
+  - [x] Add created_at/updated_at to candle tables
+  - [x] Add triggers for updated_at
+- [x] Fix TypeORM column mapping (snake_case ↔ camelCase)
 
 ### Testing
 
-- [ ] Manual test: Execute trade
-- [ ] Manual test: Query ticker (verify price updated)
-- [ ] Manual test: Query candles
-- [ ] Verify ticker cache in Redis
+- [x] Automated test script (`test-matching-engine.js`)
+  - [x] Test 1: Basic limit order matching
+  - [x] Test 2: Partial fill
+  - [x] Test 3: Market order execution
+  - [x] Test 4: No match (wide spread)
+  - [x] Test 5: Orderbook display & updates
+  - [x] Test 6: Market data updates (ticker + candles)
+- [x] Manual test: Execute trade → Verify ticker updated
+- [x] Manual test: Query candles → Verify OHLCV data
+- [x] Verify ticker cache in Redis
+- [x] Verify orderbook aggregation
+- [x] All 6/6 tests passing ✅
+
+### Documentation
+
+- [x] Mermaid flow diagram (`matching-flow.mmd`)
+  - [x] Complete flow from order placement to settlement
+  - [x] Redis orderbook structures
+  - [x] Event-driven updates
+  - [x] Ticker/Candle generation
+- [x] Postman collection updated
+  - [x] GET /api/ticker (all tickers)
+  - [x] GET /api/ticker/:pair (single ticker)
+  - [x] GET /api/ticker/:pair/candles (with timeframe & limit)
+- [x] Updated MEMORY.md with Phase 5 completion
 
 ---
 
-## 🔌 Phase 6: WebSocket (Week 4-5)
+## 🔌 Phase 6: WebSocket (Week 4-5) ✅
 
 **Goal**: Real-time notifications
 
 **Duration**: 2-3 days
 
+**Status**: ✅ Phase 6 Complete - WebSocket Real-time Updates
+
+**Completion Date**: 2026-03-19
+
+**Summary**: Implemented Socket.IO WebSocket gateways with EventEmitter2 for real-time order, trade, and ticker updates. Includes JWT authentication, room-based architecture, and comprehensive event handling.
+
 ### WebSocket Setup
 
-- [ ] Install dependencies (`@nestjs/websockets`, `socket.io`)
-- [ ] Install EventEmitter2 (`@nestjs/event-emitter`)
-- [ ] Configure EventEmitter2 module
-- [ ] Generate WebSocket module
-- [ ] Generate OrderGateway
-- [ ] Generate TickerGateway
+- [x] Install dependencies (`@nestjs/websockets`, `socket.io`)
+- [x] Install EventEmitter2 (`@nestjs/event-emitter`)
+- [x] Configure EventEmitter2 module
+- [x] Generate WebSocket module
+- [x] Generate OrderGateway
+- [x] Generate TickerGateway
 
 ### Order Gateway
 
-- [ ] `@WebSocketGateway` decorator (namespace: '/orders')
-- [ ] CORS configuration
-- [ ] Connection handler
-  - [ ] Verify JWT token
-  - [ ] Extract user from token
-  - [ ] Join user-specific room
-- [ ] Disconnect handler
-- [ ] Subscribe to pair events
-  - [ ] `subscribe:pair` message handler
-  - [ ] Join pair-specific room
-- [ ] Event subscribers (EventEmitter2)
-  - [ ] Subscribe to `order.matched` event
-  - [ ] Subscribe to `trade.executed` event
-  - [ ] Subscribe to `order.filled` event
-  - [ ] Subscribe to `order.cancelled` event
-- [ ] Emit events to clients
-  - [ ] Emit to user room (private events)
-  - [ ] Emit to pair room (public events)
+- [x] `@WebSocketGateway` decorator (namespace: '/orders')
+- [x] CORS configuration
+- [x] Connection handler
+  - [x] Verify JWT token
+  - [x] Extract user from token
+  - [x] Join user-specific room
+- [x] Disconnect handler
+- [x] Subscribe to pair events
+  - [x] `subscribe:pair` message handler
+  - [x] Join pair-specific room
+  - [x] `unsubscribe:pair` message handler
+- [x] Event subscribers (EventEmitter2)
+  - [x] Subscribe to `order.matched` event
+  - [x] Subscribe to `trade.executed` event
+  - [x] Subscribe to `order.filled` event
+  - [x] Subscribe to `order.cancelled` event
+- [x] Emit events to clients
+  - [x] Emit to user room (private events)
+  - [x] Emit to pair room (public events)
+  - [x] Include complete event payloads
 
 ### Ticker Gateway
 
-- [ ] `@WebSocketGateway` decorator (namespace: '/ticker')
-- [ ] Connection handler (no auth required)
-- [ ] Subscribe to ticker events
-  - [ ] Subscribe to `ticker.update` event
-- [ ] Emit ticker updates
-  - [ ] Broadcast to all connected clients
-  - [ ] Include pair, price, volume, change%
+- [x] `@WebSocketGateway` decorator (namespace: '/ticker')
+- [x] Connection handler (no auth required)
+- [x] Subscribe to ticker events
+  - [x] Subscribe to `ticker.update` event
+  - [x] Subscribe to `orderbook.update` event
+- [x] Emit ticker updates
+  - [x] Broadcast to all connected clients
+  - [x] Include pair, price, volume, change%
+
+### Integration with Existing Services
+
+- [x] Updated TickerService to emit EventEmitter2 events
+  - [x] Emit `ticker.update` after ticker updates
+  - [x] Emit `orderbook.update` from cron job
+- [x] Updated SettlementService to emit EventEmitter2 events
+  - [x] Emit `trade.executed` after settlement
+  - [x] Emit `order.matched` for both orders
+  - [x] Emit `order.filled` when order fully filled
 
 ### Testing
 
-- [ ] Manual test: Connect to WebSocket (wscat or Postman)
-- [ ] Manual test: Subscribe to pair
-- [ ] Manual test: Place order, verify WebSocket event
-- [ ] Manual test: Execute trade, verify WebSocket event
-- [ ] Manual test: Ticker updates received
+- [x] Automated test script (`test-websocket.js`)
+  - [x] Connect to OrderGateway with JWT
+  - [x] Connect to TickerGateway (public)
+  - [x] Subscribe to pair events
+  - [x] Listen for all event types
+- [x] Testing documentation (`websocket-testing-guide.md`)
+  - [x] Event flow diagrams
+  - [x] Event payload examples
+  - [x] Frontend integration examples
+  - [x] Troubleshooting guide
 
 ---
 
@@ -448,12 +539,19 @@
   - [ ] Test concurrent operations
   - [ ] Test insufficient balance
 
-### Integration Tests (Manual)
+### Integration Tests (Automated)
 
-- [ ] Happy path: User registration → Login → Deposit → Order → Match → Settlement
-- [ ] LIMIT order flow
-- [ ] MARKET order flow
-- [ ] Partial fill scenario
+- [x] Matching engine test script (`docs/scripts/test-matching-engine.js`)
+  - [x] Happy path: Login → Deposit → Order → Match → Settlement
+  - [x] LIMIT order flow
+  - [x] MARKET order flow
+  - [x] Partial fill scenario
+  - [x] Orderbook display & updates
+  - [x] Market data updates (ticker + candles)
+  - [x] No match scenario (wide spread)
+
+### Integration Tests (Manual - TODO)
+
 - [ ] Order cancellation
 - [ ] Insufficient balance error
 - [ ] Settlement failure scenario
@@ -559,6 +657,6 @@ If stuck on any task:
 
 ---
 
-**Last Updated**: 2026-03-12
-**Status**: Ready to implement
-**Next Task**: Phase 1 - Docker Compose setup
+**Last Updated**: 2026-03-19
+**Status**: Phase 5 Complete - Market Data (Ticker + Candles) ✅
+**Next Task**: Phase 6 - WebSocket Real-time Updates

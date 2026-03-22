@@ -13,7 +13,11 @@ export class WithdrawDto {
   })
   asset: string;
 
-  @ApiProperty({ example: 500, description: 'Amount to withdraw', minimum: 0.00000001 })
+  @ApiProperty({
+    example: 500,
+    description: 'Amount to withdraw',
+    minimum: 0.00000001,
+  })
   @IsNumber()
   @Min(0.00000001, { message: 'Amount must be greater than 0' })
   amount: number;

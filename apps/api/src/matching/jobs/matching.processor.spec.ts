@@ -49,7 +49,9 @@ describe('MatchingProcessor', () => {
 
   beforeEach(async () => {
     mockRepoFindOne = jest.fn();
-    mockRepoSave = jest.fn().mockImplementation((entity) => Promise.resolve(entity));
+    mockRepoSave = jest
+      .fn()
+      .mockImplementation((entity) => Promise.resolve(entity));
     mockQrManagerFindOne = jest.fn();
     mockQrManagerSave = jest.fn().mockImplementation((entity: unknown) => {
       const e = entity as { id?: string; bidOrderId?: string };
@@ -257,7 +259,11 @@ describe('MatchingProcessor', () => {
         .mockResolvedValueOnce(order)
         .mockResolvedValueOnce(order)
         .mockResolvedValueOnce(oppOrder)
-        .mockResolvedValueOnce({ ...oppOrder, status: 'COMPLETED', remaining: '0' });
+        .mockResolvedValueOnce({
+          ...oppOrder,
+          status: 'COMPLETED',
+          remaining: '0',
+        });
       mockOrderbookService.getBestAsk.mockResolvedValue({
         orderId: '2',
         price: 50000,
@@ -281,7 +287,9 @@ describe('MatchingProcessor', () => {
           settlementStatus: 'PENDING',
         }),
       );
-      expect(mockSettlementService.settleTrade).toHaveBeenCalledWith('trade-99');
+      expect(mockSettlementService.settleTrade).toHaveBeenCalledWith(
+        'trade-99',
+      );
       expect(mockOrderbookService.adjustLevel).toHaveBeenCalled();
       expect(mockOrderbookService.adjustLevel).toHaveBeenCalledWith(
         'BTC/USD',
@@ -348,7 +356,11 @@ describe('MatchingProcessor', () => {
           remaining: '0',
           status: 'COMPLETED',
         })
-        .mockResolvedValueOnce({ ...order, remaining: '2', status: 'PARTLY_FILLED' });
+        .mockResolvedValueOnce({
+          ...order,
+          remaining: '2',
+          status: 'PARTLY_FILLED',
+        });
       mockOrderbookService.getBestAsk
         .mockResolvedValueOnce({ orderId: '2', price: 50000 })
         .mockResolvedValueOnce(null);

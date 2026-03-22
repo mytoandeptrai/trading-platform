@@ -26,13 +26,10 @@ function FormNumberInput<
   className,
   readOnly,
   thousandSeparator,
-  min,
-  max,
   suffix,
   prefix,
   fixedDecimalScale,
   decimalScale,
-  defaultValue,
   ...props
 }: FormNumberInputProps<TFieldValues, TName>) {
   return (

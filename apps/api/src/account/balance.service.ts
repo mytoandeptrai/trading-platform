@@ -147,10 +147,17 @@ export class BalanceService {
     await qr.manager.save(tx);
   }
 
-  async unlockForOrder(orderId: string): Promise<void> {
-    const qr = this.dataSource.createQueryRunner();
-    await qr.connect();
-    await qr.startTransaction();
+  /**
+   * Unlock all locked balances for an order. When `runner` is passed, uses that
+   * QueryRunner (caller owns transaction). Otherwise starts and commits its own transaction.
+   */
+  async unlockForOrder(orderId: string, runner?: QueryRunner): Promise<void> {
+    const owned = !runner;
+    const qr = runner ?? this.dataSource.createQueryRunner();
+    if (owned) {
+      await qr.connect();
+      await qr.startTransaction();
+    }
 
     try {
       const locks = await qr.manager.find(LockRecordEntity, {
@@ -237,12 +244,18 @@ export class BalanceService {
         await qr.manager.save(lock);
       }
 
-      await qr.commitTransaction();
+      if (owned) {
+        await qr.commitTransaction();
+      }
     } catch (error) {
-      await qr.rollbackTransaction();
+      if (owned) {
+        await qr.rollbackTransaction();
+      }
       throw error;
     } finally {
-      await qr.release();
+      if (owned) {
+        await qr.release();
+      }
     }
   }
 }

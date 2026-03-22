@@ -15,7 +15,7 @@ export class OrderbookController {
     schema: {
       type: 'object',
       properties: {
-        pair: { type: 'string', example: 'BTC/USD' },
+        pair: { type: 'string', example: 'BTC/USDT' },
         bids: {
           type: 'array',
           items: {
@@ -23,7 +23,7 @@ export class OrderbookController {
             properties: {
               price: { type: 'number', example: 50000 },
               quantity: { type: 'number', example: 0.25 },
-              orderCount: { type: 'number', example: 5 }
+              orderCount: { type: 'number', example: 5 },
             },
           },
         },
@@ -34,7 +34,7 @@ export class OrderbookController {
             properties: {
               price: { type: 'number', example: 50100 },
               quantity: { type: 'number', example: 0.1 },
-              orderCount: { type: 'number', example: 2 }
+              orderCount: { type: 'number', example: 2 },
             },
           },
         },
@@ -45,4 +45,3 @@ export class OrderbookController {
     return this.orderbookService.getSnapshot(query.pair, query.levels);
   }
 }
-

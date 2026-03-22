@@ -52,4 +52,3 @@ export class LockRecordEntity {
   @JoinColumn({ name: 'account_id' })
   account: AccountEntity;
 }
-

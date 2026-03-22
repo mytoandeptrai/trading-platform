@@ -6,4 +6,3 @@ export class CancelOrderDto {
   @IsNumber()
   orderId: number;
 }
-

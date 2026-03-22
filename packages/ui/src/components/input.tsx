@@ -9,7 +9,7 @@ export interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElem
 }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type, suffix, prefix, containerClassName, required, ...props }, ref) => {
+  ({ className, type, suffix, prefix, containerClassName, ...props }, ref) => {
     const [isShowPassword, setIsShowPassword] = React.useState<boolean>(false);
 
     return (

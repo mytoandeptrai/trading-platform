@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { DataSource } from 'typeorm';
 import { RedisService } from '../common/redis/redis.service';
 import { TradeEntity } from './entities/trade.entity';
@@ -12,25 +13,44 @@ import {
   BusinessException,
   AccountFrozenException,
 } from '../common/exceptions/business.exception';
-import { getPairConfig } from '../common/constants/pairs.constant';
+import { TradingPairsService } from '../trading-pairs/trading-pairs.service';
 
 @Injectable()
 export class SettlementService {
   constructor(
     private readonly dataSource: DataSource,
     private readonly redisService: RedisService,
+    private readonly eventEmitter: EventEmitter2,
+    private readonly tradingPairsService: TradingPairsService,
   ) {}
+
+  private emitOrderbookUpdate(pairName: string): void {
+    // Simply emit notification that orderbook changed
+    // Frontend will refetch orderbook via API
+    this.eventEmitter.emit('orderbook.changed', {
+      pairName,
+      timestamp: new Date(),
+    });
+  }
 
   private get redis() {
     return this.redisService.getClient();
   }
 
-  private feeRateForOrderType(pairName: string, orderType: string): number {
-    const pairCfg = getPairConfig(pairName);
-    if (!pairCfg) return 0;
-    // LIMIT orders that rest in the book are maker; MARKET orders are taker.
-    // In our simplified POC: maker fee for LIMIT, taker fee for MARKET.
-    return orderType === 'MARKET' ? pairCfg.takerFeeRate : pairCfg.makerFeeRate;
+  private async feeRateForOrderType(
+    pairName: string,
+    orderType: string,
+  ): Promise<number> {
+    try {
+      const pairCfg = await this.tradingPairsService.findByName(pairName);
+      // LIMIT orders that rest in the book are maker; MARKET orders are taker.
+      // In our simplified POC: maker fee for LIMIT, taker fee for MARKET.
+      const takerRate = parseFloat(pairCfg.takerFeeRate);
+      const makerRate = parseFloat(pairCfg.makerFeeRate);
+      return orderType === 'MARKET' ? takerRate : makerRate;
+    } catch {
+      return 0;
+    }
   }
 
   async settleTrade(tradeId: string): Promise<void> {
@@ -87,10 +107,10 @@ export class SettlementService {
         throw new AccountFrozenException(Number(askAccount.id));
       }
 
-      const pairCfg = getPairConfig(trade.pairName);
-      if (!pairCfg) {
-        throw new BusinessException('Pair not found', 'PAIR_NOT_FOUND');
-      }
+      // Validate pair exists
+      const pairCfg = await this.tradingPairsService.findByName(
+        trade.pairName,
+      );
 
       const price = parseFloat(trade.price);
       const qty = parseFloat(trade.quantity);
@@ -98,11 +118,11 @@ export class SettlementService {
 
       // Fee model (confirmed by user): fee charged in quote currency (USD).
       // Maker/Taker: resting LIMIT -> maker, incoming MARKET -> taker (simplified).
-      const buyerRate = this.feeRateForOrderType(
+      const buyerRate = await this.feeRateForOrderType(
         trade.pairName,
         bidOrder.orderType,
       );
-      const sellerRate = this.feeRateForOrderType(
+      const sellerRate = await this.feeRateForOrderType(
         trade.pairName,
         askOrder.orderType,
       );
@@ -202,7 +222,7 @@ export class SettlementService {
 
       await qr.commitTransaction();
 
-      // Publish events (Phase 4)
+      // Publish events (Phase 4 - Redis pub/sub for inter-service communication)
       await this.redis.publish(
         'trade.executed',
         JSON.stringify({
@@ -223,6 +243,97 @@ export class SettlementService {
           tradeId: trade.id,
         }),
       );
+
+      // Emit EventEmitter2 events (Phase 6 - WebSocket real-time notifications)
+      // Reload orders to get updated status
+      const updatedBidOrder = await this.dataSource
+        .getRepository(OrderEntity)
+        .findOne({ where: { id: trade.bidOrderId } });
+      const updatedAskOrder = await this.dataSource
+        .getRepository(OrderEntity)
+        .findOne({ where: { id: trade.askOrderId } });
+
+      // Emit trade.executed event
+      this.eventEmitter.emit('trade.executed', {
+        tradeId: trade.id,
+        pairName: trade.pairName,
+        price: trade.price,
+        quantity: trade.quantity,
+        value: value.toString(),
+        buyOrderId: trade.bidOrderId,
+        sellOrderId: trade.askOrderId,
+        buyUserId: bidAccount.userId.toString(),
+        sellUserId: askAccount.userId.toString(),
+        executedAt: trade.settlementTime,
+      });
+
+      // Emit order.matched events for both orders
+      if (updatedBidOrder) {
+        const bidRemaining = parseFloat(updatedBidOrder.remaining);
+        const bidFilled = parseFloat(updatedBidOrder.filled);
+        this.eventEmitter.emit('order.matched', {
+          orderId: updatedBidOrder.id,
+          userId: bidAccount.userId.toString(),
+          pairName: updatedBidOrder.pairName,
+          side: 'BUY',
+          price: updatedBidOrder.price,
+          quantity: updatedBidOrder.amount,
+          matchedQuantity: qty.toString(),
+          remainingQuantity: bidRemaining.toString(),
+          oppositeOrderId: trade.askOrderId,
+        });
+
+        // If order is fully filled, emit order.filled
+        if (
+          updatedBidOrder.status === 'FILLED' ||
+          updatedBidOrder.status === 'COMPLETED' ||
+          bidRemaining <= 0
+        ) {
+          this.eventEmitter.emit('order.filled', {
+            orderId: updatedBidOrder.id,
+            userId: bidAccount.userId.toString(),
+            pairName: updatedBidOrder.pairName,
+            side: 'BUY',
+            filledQuantity: bidFilled.toString(),
+            averagePrice: updatedBidOrder.price || '0',
+          });
+        }
+      }
+
+      if (updatedAskOrder) {
+        const askRemaining = parseFloat(updatedAskOrder.remaining);
+        const askFilled = parseFloat(updatedAskOrder.filled);
+        this.eventEmitter.emit('order.matched', {
+          orderId: updatedAskOrder.id,
+          userId: askAccount.userId.toString(),
+          pairName: updatedAskOrder.pairName,
+          side: 'SELL',
+          price: updatedAskOrder.price,
+          quantity: updatedAskOrder.amount,
+          matchedQuantity: qty.toString(),
+          remainingQuantity: askRemaining.toString(),
+          oppositeOrderId: trade.bidOrderId,
+        });
+
+        // If order is fully filled, emit order.filled
+        if (
+          updatedAskOrder.status === 'FILLED' ||
+          updatedAskOrder.status === 'COMPLETED' ||
+          askRemaining <= 0
+        ) {
+          this.eventEmitter.emit('order.filled', {
+            orderId: updatedAskOrder.id,
+            userId: askAccount.userId.toString(),
+            pairName: updatedAskOrder.pairName,
+            side: 'SELL',
+            filledQuantity: askFilled.toString(),
+            averagePrice: updatedAskOrder.price || '0',
+          });
+        }
+      }
+
+      // Emit orderbook.changed to notify frontend to refetch
+      this.emitOrderbookUpdate(trade.pairName);
     } catch (error) {
       await qr.rollbackTransaction();
       // Best effort: mark trade failed (keep locks for manual cleanup as per TDD)
@@ -308,11 +419,12 @@ export class SettlementService {
       await qr.manager.save(coin);
     }
 
-    const newLockAmount = lockedAmount - consumeAmount;
+    const newLockAmount = Math.max(0, lockedAmount - consumeAmount);
     lock.lockAmount = newLockAmount.toString();
     if (newLockAmount <= 1e-12) {
       lock.status = 'UNLOCKED';
       lock.unlockedAt = new Date();
+      lock.lockAmount = '0';
     }
     await qr.manager.save(lock);
   }

@@ -1,98 +1,278 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Trading Platform API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A high-performance cryptocurrency trading engine built with NestJS, featuring real-time order matching, WebSocket updates, and market data streaming.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## 🚀 Features
 
-## Description
+- **Real-time Order Matching** - In-memory matching engine with Redis-backed orderbook
+- **WebSocket Updates** - Live ticker, orderbook, and trade updates
+- **Market Data** - OHLCV candles at multiple timeframes (1m, 5m, 1h, 1d)
+- **Account Management** - User accounts with multi-currency balances
+- **Order Types** - Market and Limit orders with maker/taker fees
+- **Transaction History** - Complete audit trail of all trades and transactions
+- **Swagger Documentation** - Interactive API documentation at `/api`
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## 🛠 Tech Stack
 
-## Project setup
+- **Framework**: NestJS 11
+- **Language**: TypeScript
+- **Database**: PostgreSQL (with TypeORM)
+- **Cache/Queue**: Redis + BullMQ
+- **Real-time**: Socket.IO
+- **Authentication**: JWT with HTTP-only cookies
+- **Documentation**: Swagger/OpenAPI
 
-```bash
-$ pnpm install
+## 📋 Prerequisites
+
+- Node.js 18+
+- pnpm 8+
+- PostgreSQL 14+
+- Redis 6+
+
+## 🔧 Environment Setup
+
+### 1. Database Configuration
+
+**Option A: Local PostgreSQL**
+```env
+DB_HOST=localhost
+DB_PORT=5432
+DB_USERNAME=trading
+DB_PASSWORD=trading_dev
+DB_NAME=tradingengine
+DB_SCHEMA=public
+DB_SSL_ENABLED=false
 ```
 
-## Compile and run the project
-
-```bash
-# development
-$ pnpm run start
-
-# watch mode
-$ pnpm run start:dev
-
-# production mode
-$ pnpm run start:prod
+**Option B: Aiven (Production)**
+```env
+DB_HOST=your-instance.aivencloud.com
+DB_PORT=23298
+DB_USERNAME=avnadmin
+DB_PASSWORD=your-password
+DB_NAME=defaultdb
+DB_SCHEMA=public
+DB_SSL_ENABLED=true
+DB_SSL_CA_PATH=ca.pem
 ```
 
-## Run tests
+### 2. Redis Configuration
 
-```bash
-# unit tests
-$ pnpm run test
-
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
+**Option A: Upstash/Production (Priority)**
+```env
+REDIS_URL=rediss://default:password@host:6379
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
+**Option B: Local Development**
+```env
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=
+REDIS_DB=0
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+### 3. JWT & Security
+```env
+JWT_SECRET=your-super-secret-jwt-key-min-256-bits
+JWT_EXPIRATION=86400
+JWT_REFRESH_SECRET=your-refresh-secret
+JWT_REFRESH_EXPIRATION=604800
+```
 
-## Resources
+### 4. CORS
+```env
+ALLOWED_ORIGINS=http://localhost:3000,https://your-frontend.vercel.app
+```
 
-Check out a few resources that may come in handy when working with NestJS:
+## 🚀 Getting Started
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+### Installation
+```bash
+# From monorepo root
+pnpm install
 
-## Support
+# Or from apps/api
+cd apps/api
+pnpm install
+```
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+### Database Setup
+```bash
+# Run migrations
+pnpm db:migrate
 
-## Stay in touch
+# Seed initial data (optional)
+pnpm db:seed
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+# Reset database (migrate + seed)
+pnpm db:reset
+```
 
-## License
+### Development
+```bash
+# Start in watch mode
+pnpm dev
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+# Or
+pnpm run start:dev
+```
+
+### Production Build
+```bash
+# Build
+pnpm build
+
+# Start production server
+pnpm run start:prod
+```
+
+## 📚 API Documentation
+
+Access Swagger UI at: `http://localhost:6868/api`
+
+### Key Endpoints
+
+#### Authentication
+- `POST /api/auth/register` - Register new user
+- `POST /api/auth/login` - Login
+- `POST /api/auth/logout` - Logout
+- `GET /api/auth/me` - Get current user
+
+#### Trading
+- `POST /api/orders` - Place order (MARKET/LIMIT)
+- `GET /api/orders` - List user orders
+- `DELETE /api/orders/{id}` - Cancel order
+- `POST /api/orders/cancel-all` - Cancel all active orders
+
+#### Market Data
+- `GET /api/ticker` - Get all tickers
+- `GET /api/ticker/{pair}` - Get specific ticker
+- `GET /api/ticker/candles` - Get OHLCV candles
+- `GET /api/orderbook` - Get orderbook snapshot
+
+#### Account
+- `GET /api/account/balance` - Get balances
+- `POST /api/account/deposit` - Deposit funds
+- `POST /api/account/withdraw` - Withdraw funds
+- `GET /api/account/transactions` - Transaction history
+
+#### Development
+- `DELETE /api/ticker/dev/clear-all` - Clear seeded data (dev only)
+
+## 🔌 WebSocket Events
+
+Connect to: `ws://localhost:6868`
+
+### Subscribe to Pair
+```javascript
+socket.emit('subscribe:pair', { pair: 'BTC/USDT' });
+```
+
+### Events
+- `ticker.update` - Real-time ticker updates
+- `orderbook.update` - Orderbook changes
+- `order.matched` - Trade execution
+- `orderbook.changed` - New order placed
+
+## 🗄 Database Schema
+
+### Core Tables
+- `users` - User accounts
+- `accounts` - Trading accounts
+- `balances` - Multi-currency balances
+- `orders` - Active orders
+- `order_history` - Historical orders
+- `trades` - Executed trades
+- `transactions` - Balance changes
+- `ticker` - 24h ticker statistics
+- `candle_1m/5m/1h/1d` - OHLCV candles
+- `trading_pairs` - Supported pairs with config
+
+## 🚢 Deployment
+
+### Render.com
+
+**Build Command:**
+```bash
+cd ../.. && pnpm install --frozen-lockfile && pnpm turbo run build --filter=api
+```
+
+**Start Command:**
+```bash
+pnpm run start:prod
+```
+
+**Root Directory:** `apps/api`
+
+**Environment Variables:**
+- Set `NODE_ENV=production`
+- Configure database (Aiven)
+- Configure Redis (Upstash)
+- Update CORS origins
+- Generate new JWT secrets
+
+### Database Migrations on Deploy
+
+Migrations are NOT run automatically. Deploy options:
+
+**Option 1: Manual via Render Shell**
+```bash
+pnpm db:migrate
+```
+
+**Option 2: Add to build command**
+```bash
+cd ../.. && pnpm install --frozen-lockfile && pnpm turbo run build --filter=api && cd apps/api && pnpm db:migrate
+```
+
+## 🧪 Testing
+
+```bash
+# Unit tests
+pnpm test
+
+# E2E tests
+pnpm test:e2e
+
+# Test coverage
+pnpm test:cov
+
+# Watch mode
+pnpm test:watch
+```
+
+## 📊 Architecture
+
+```
+apps/api/src/
+├── auth/              # Authentication & JWT
+├── account/           # Account & balance management
+├── matching/          # Order matching engine
+│   ├── orderbook.service.ts    # Redis-backed orderbook
+│   ├── order.service.ts        # Order lifecycle
+│   └── settlement.service.ts   # Trade settlement
+├── ticker/            # Market data & candles
+├── trading-pairs/     # Pair configuration
+├── websocket/         # Socket.IO gateway
+├── events/            # Event bus (Redis pub/sub)
+├── database/          # Migrations & seeds
+└── common/            # Shared utilities
+```
+
+## 🔐 Security
+
+- ✅ JWT with HTTP-only cookies
+- ✅ CORS configuration
+- ✅ Rate limiting
+- ✅ SQL injection protection (TypeORM)
+- ✅ Input validation (class-validator)
+- ✅ SSL/TLS for database connections
+- ✅ Environment variable protection
+
+## 📝 License
+
+MIT
+
+## 👥 Team
+
+Built with ❤️ by the Trading Platform team

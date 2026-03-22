@@ -9,7 +9,10 @@ export class AppController {
 
   @Get()
   @ApiOperation({ summary: 'Root welcome message' })
-  @ApiOkResponse({ description: 'Hello message', schema: { type: 'object', properties: { message: { type: 'string' } } } })
+  @ApiOkResponse({
+    description: 'Hello message',
+    schema: { type: 'object', properties: { message: { type: 'string' } } },
+  })
   getHello() {
     return this.appService.getHello();
   }

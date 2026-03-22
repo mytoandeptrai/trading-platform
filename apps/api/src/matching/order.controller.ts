@@ -61,7 +61,8 @@ export class OrderController {
   @ApiOperation({ summary: 'Get order by ID' })
   @ApiParam({ name: 'id', description: 'Order ID', example: '1' })
   @ApiOkResponse({
-    description: 'Order details (id, pair, side, type, price, amount, filled, remaining, status, etc.)',
+    description:
+      'Order details (id, pair, side, type, price, amount, filled, remaining, status, etc.)',
     schema: {
       type: 'object',
       properties: {
@@ -85,9 +86,24 @@ export class OrderController {
 
   @Get()
   @ApiOperation({ summary: 'List orders with optional filters' })
-  @ApiQuery({ name: 'status', required: false, type: String, description: 'Filter by status (PENDING, COMPLETED, CANCELED, etc.)' })
-  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Max items (default 50)' })
-  @ApiQuery({ name: 'offset', required: false, type: Number, description: 'Offset for pagination (default 0)' })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    type: String,
+    description: 'Filter by status (PENDING, COMPLETED, CANCELED, etc.)',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Max items (default 50)',
+  })
+  @ApiQuery({
+    name: 'offset',
+    required: false,
+    type: Number,
+    description: 'Offset for pagination (default 0)',
+  })
   @ApiOkResponse({
     description: 'List of orders.',
     schema: {
@@ -120,6 +136,27 @@ export class OrderController {
       parsedLimit,
       parsedOffset,
     );
+  }
+
+  @Post('cancel-all')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Cancel all active orders for the current user' })
+  @ApiOkResponse({
+    description: 'All active orders canceled. Returns count and list of order IDs.',
+    schema: {
+      type: 'object',
+      properties: {
+        canceled: { type: 'number', example: 3 },
+        orderIds: {
+          type: 'array',
+          items: { type: 'string' },
+          example: ['1', '2', '3'],
+        },
+      },
+    },
+  })
+  async cancelAllOrders(@Request() req) {
+    return this.orderService.cancelAllOrders(req.user.id);
   }
 
   @Delete(':id')

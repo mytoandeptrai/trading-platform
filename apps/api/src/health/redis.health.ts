@@ -13,9 +13,10 @@ export class RedisHealthIndicator extends HealthIndicator {
 
   constructor(private readonly configService: ConfigService) {
     super();
-    const redisCfg = this.configService.get<import('../config/redis.config').RedisConfig>(
-      'redis',
-    );
+    const redisCfg =
+      this.configService.get<import('../config/redis.config').RedisConfig>(
+        'redis',
+      );
     this.redis = new Redis({
       host: redisCfg?.host || 'localhost',
       port: redisCfg?.port ?? 6379,

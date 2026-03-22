@@ -1,25 +1,61 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleInit,
+  OnModuleDestroy,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Pool, QueryResult } from 'pg';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
 @Injectable()
 export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   private pool: Pool;
   private readonly logger = new Logger(DatabaseService.name);
 
-  constructor(
-    private readonly configService: ConfigService,
-  ) {
-    this.pool = new Pool({
+  constructor(private readonly configService: ConfigService) {
+    const sslEnabledEnv = this.configService.get('DB_SSL_ENABLED');
+    const sslEnabled = sslEnabledEnv === 'true' || sslEnabledEnv === true;
+
+    const poolConfig: any = {
       host: this.configService.get('DB_HOST') || 'localhost',
       port: parseInt(this.configService.get('DB_PORT') || '5432', 10),
       user: this.configService.get('DB_USERNAME') || 'trading',
       password: this.configService.get('DB_PASSWORD') || 'trading_dev',
       database: this.configService.get('DB_NAME') || 'tradingengine',
-      max: 20, // Maximum number of clients in the pool
-      idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
-      connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection could not be established
-    });
+      max: 20,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 2000,
+    };
+
+    // Add SSL config if enabled (for Aiven, Render, etc.)
+    if (sslEnabled) {
+      const caCertPath = this.configService.get('DB_SSL_CA_PATH');
+      if (caCertPath) {
+        try {
+          const fullPath = join(process.cwd(), caCertPath);
+          const ca = readFileSync(fullPath, 'utf8');
+          poolConfig.ssl = {
+            rejectUnauthorized: true,
+            ca,
+          };
+          this.logger.log(
+            `SSL enabled for pg Pool with CA cert (${ca.length} chars)`,
+          );
+        } catch (error) {
+          const errorMsg =
+            error instanceof Error ? error.message : String(error);
+          this.logger.error(`Failed to read CA cert: ${errorMsg}`);
+          throw error;
+        }
+      } else {
+        poolConfig.ssl = { rejectUnauthorized: false };
+        this.logger.log('SSL enabled for pg Pool without CA cert');
+      }
+    }
+
+    this.pool = new Pool(poolConfig);
 
     // Log pool errors
     this.pool.on('error', (err) => {
