@@ -10,6 +10,7 @@ import { TradeEntity } from './entities/trade.entity';
 import { AccountEntity } from '../account/entities/account.entity';
 import { LoggerModule } from '../common/logger/logger.module';
 import { AccountModule } from '../account/account.module';
+import { TradingPairsModule } from '../trading-pairs/trading-pairs.module';
 import { OrderbookService } from './orderbook.service';
 import { MatchingProcessor } from './jobs/matching.processor';
 import { SettlementService } from './settlement.service';
@@ -18,6 +19,7 @@ import { SettlementService } from './settlement.service';
   imports: [
     LoggerModule,
     AccountModule,
+    TradingPairsModule,
     BullModule.registerQueue({
       name: 'order-matching',
     }),

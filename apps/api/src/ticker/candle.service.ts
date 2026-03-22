@@ -1,5 +1,12 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { DataSource, LessThan, Repository } from 'typeorm';
+import {
+  DataSource,
+  LessThan,
+  MoreThanOrEqual,
+  LessThanOrEqual,
+  Repository,
+  FindOptionsWhere,
+} from 'typeorm';
 import { RedisSubscriberService } from '../events/redis-subscriber.service';
 import { Candle1mEntity } from './entities/candle-1m.entity';
 import { Candle5mEntity } from './entities/candle-5m.entity';
@@ -202,22 +209,59 @@ export class CandleService implements OnModuleInit {
   }
 
   /**
-   * Get candles for a specific pair and timeframe.
+   * Get candles for a specific pair and timeframe with optional time range filtering.
    * Used by TickerController to expose API endpoints.
+   * @param pairName - Trading pair name (e.g., 'BTC/USDT')
+   * @param interval - Candle timeframe (1m, 5m, 1h, 1d)
+   * @param take - Number of candles to retrieve (default: 1000)
+   * @param startTime - Optional start time in seconds (Unix timestamp)
+   * @param endTime - Optional end time in seconds (Unix timestamp)
    */
   async getCandles(
-    pair: string,
-    timeframe: CandleTimeframe,
-    limit: number = 100,
+    pairName: string,
+    interval: CandleTimeframe,
+    take: number = 1000,
+    startTime?: number,
+    endTime?: number,
   ): Promise<CandleEntity[]> {
-    const repo = this.getRepository(
-      timeframe as '1m' | '5m' | '1h' | '1d',
-    );
+    const repo = this.getRepository(interval as '1m' | '5m' | '1h' | '1d');
+
+    // Build where clause with time range filtering
+    const where: FindOptionsWhere<CandleEntity> = {
+      pairName,
+    } as any;
+
+    // Add time range filters if provided (convert Unix seconds to Date)
+    if (startTime !== undefined) {
+      where.openTime = MoreThanOrEqual(new Date(startTime * 1000)) as any;
+    }
+
+    if (endTime !== undefined) {
+      // If both startTime and endTime are provided, we need to use AND condition
+      if (startTime !== undefined) {
+        // Use query builder for complex where conditions
+        const queryBuilder = repo
+          .createQueryBuilder('candle')
+          .where('candle.pairName = :pairName', { pairName })
+          .andWhere('candle.openTime >= :startTime', {
+            startTime: new Date(startTime * 1000),
+          })
+          .andWhere('candle.openTime <= :endTime', {
+            endTime: new Date(endTime * 1000),
+          })
+          .orderBy('candle.openTime', 'ASC')
+          .limit(take);
+
+        return queryBuilder.getMany();
+      } else {
+        where.openTime = LessThanOrEqual(new Date(endTime * 1000)) as any;
+      }
+    }
 
     return repo.find({
-      where: { pairName: pair } as any,
-      order: { openTime: 'DESC' } as any,
-      take: limit,
+      where,
+      order: { openTime: 'ASC' } as any,
+      take,
     });
   }
 }

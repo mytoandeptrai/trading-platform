@@ -24,7 +24,7 @@ export interface TradingStore {
 }
 
 export const useTradingStore = create<TradingStore>((set) => ({
-  currentPair: 'BTCUSDT',
+  currentPair: 'BTC/USDT', // Backend expects format with slash (BTC/USDT, ETH/USDT, etc.)
   setCurrentPair: (pair) => set({ currentPair: pair }),
 
   orderSide: 'BUY',

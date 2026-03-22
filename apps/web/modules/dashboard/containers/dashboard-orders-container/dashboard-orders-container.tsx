@@ -2,9 +2,23 @@
 
 import { useDashboardOrdersContainer } from '../../hooks/use-dashboard-orders-container';
 import { OrdersTable } from '@/components/orders-table';
+import { useAuth } from '@/contexts/auth-context';
+import { Button } from '@repo/ui/components/button';
+import { LogIn } from 'lucide-react';
 
 export function DashboardOrdersContainer() {
-  const { activeTab, orders, isLoading, onTabChange, onCancelOrder } = useDashboardOrdersContainer();
+  const { isAuthenticated, isLoading: authLoading, openAuthModal } = useAuth();
+  const {
+    activeTab,
+    orders,
+    isLoading,
+    total,
+    limit,
+    offset,
+    onTabChange,
+    onCancelOrder,
+    onPageChange,
+  } = useDashboardOrdersContainer();
 
   const tabs = [
     { value: 'all', label: 'All Orders' },
@@ -12,6 +26,31 @@ export function DashboardOrdersContainer() {
     { value: 'FILLED', label: 'Order History' },
     { value: 'CANCELED', label: 'Canceled' },
   ];
+
+  if (authLoading) {
+    return (
+      <div className="flex h-[400px] items-center justify-center bg-[#0D0D0D]">
+        <div className="text-sm text-gray-400">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="flex h-[400px] flex-col items-center justify-center gap-4 bg-[#0D0D0D] p-8 text-center">
+        <LogIn className="h-12 w-12 text-gray-600" />
+        <div>
+          <h3 className="text-lg font-semibold text-white">Login to View Orders</h3>
+          <p className="mt-2 text-sm text-gray-400">
+            Please login to view your trading history
+          </p>
+        </div>
+        <Button onClick={openAuthModal} className="mt-2">
+          Login
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-[400px] flex-col bg-[#0D0D0D]">
@@ -38,6 +77,10 @@ export function DashboardOrdersContainer() {
           orders={orders}
           isLoading={isLoading}
           onCancelOrder={onCancelOrder}
+          total={total}
+          limit={limit}
+          offset={offset}
+          onPageChange={onPageChange}
         />
       </div>
     </div>

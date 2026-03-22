@@ -98,7 +98,7 @@ export class TickerGateway
 
   /**
    * Event: orderbook.update
-   * Emitted when orderbook is updated
+   * Emitted when orderbook is updated (from TickerService scheduler)
    * Broadcast orderbook snapshot to all clients
    */
   @OnEvent('orderbook.update')
@@ -118,6 +118,24 @@ export class TickerGateway
 
     this.logger.debug(
       `Broadcasted orderbook:update - Pair: ${payload.pairName}`,
+    );
+  }
+
+  /**
+   * Event: orderbook.changed
+   * Emitted when orderbook changed (from SettlementService after matching)
+   * Notify frontend to refetch orderbook via API
+   */
+  @OnEvent('orderbook.changed')
+  handleOrderbookChanged(payload: { pairName: string; timestamp: Date }) {
+    // Emit simple notification - frontend will refetch API
+    this.server.emit('orderbook:changed', {
+      pair: payload.pairName,
+      timestamp: payload.timestamp,
+    });
+
+    this.logger.debug(
+      `Broadcasted orderbook:changed - Pair: ${payload.pairName}`,
     );
   }
 }

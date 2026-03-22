@@ -15,7 +15,7 @@ export class OrderbookController {
     schema: {
       type: 'object',
       properties: {
-        pair: { type: 'string', example: 'BTC/USD' },
+        pair: { type: 'string', example: 'BTC/USDT' },
         bids: {
           type: 'array',
           items: {

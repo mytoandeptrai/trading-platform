@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, Repository } from 'typeorm';
 import { InjectQueue } from '@nestjs/bullmq';
 import type { Queue } from 'bullmq';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { AccountEntity } from '../account/entities/account.entity';
 import { BalanceService } from '../account/balance.service';
 import { PlaceOrderDto } from './dto/place-order.dto';
@@ -14,7 +15,7 @@ import {
   BusinessException,
   AccountFrozenException,
 } from '../common/exceptions/business.exception';
-import { getPairConfig } from '../common/constants/pairs.constant';
+import { TradingPairsService } from '../trading-pairs/trading-pairs.service';
 
 @Injectable()
 export class OrderService {
@@ -29,33 +30,40 @@ export class OrderService {
     private readonly accountRepo: Repository<AccountEntity>,
     private readonly balanceService: BalanceService,
     private readonly orderbookService: OrderbookService,
+    private readonly tradingPairsService: TradingPairsService,
     private readonly dataSource: DataSource,
     @InjectQueue('order-matching')
     private readonly matchingQueue: Queue,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async placeOrder(
     userId: number,
     dto: PlaceOrderDto,
   ): Promise<{ orderId: number }> {
-    const pairCfg = getPairConfig(dto.pair);
-    if (!pairCfg || !pairCfg.isTradingActive) {
+    // Fetch pair config from database
+    const pairCfg = await this.tradingPairsService.findByName(dto.pair);
+
+    if (!pairCfg.isTradingActive) {
       throw new BusinessException(
         'Pair not available for trading',
         'PAIR_NOT_ACTIVE',
       );
     }
 
-    if (
-      dto.amount < pairCfg.minOrderAmount ||
-      dto.amount > pairCfg.maxOrderAmount
-    ) {
+    const minOrderAmount = parseFloat(pairCfg.minOrderAmount);
+    const maxOrderAmount = parseFloat(pairCfg.maxOrderAmount);
+    const tickSize = parseFloat(pairCfg.tickSize);
+    const makerFeeRate = parseFloat(pairCfg.makerFeeRate);
+    const maxPrice = parseFloat(pairCfg.maxPrice);
+
+    if (dto.amount < minOrderAmount || dto.amount > maxOrderAmount) {
       throw new BusinessException(
         'Invalid order amount',
         'INVALID_ORDER_AMOUNT',
         {
-          min: pairCfg.minOrderAmount,
-          max: pairCfg.maxOrderAmount,
+          min: minOrderAmount,
+          max: maxOrderAmount,
         },
       );
     }
@@ -67,12 +75,12 @@ export class OrderService {
           'PRICE_REQUIRED',
         );
       }
-      const remainder = (dto.price / pairCfg.tickSize) % 1;
+      const remainder = (dto.price / tickSize) % 1;
       if (remainder !== 0) {
         throw new BusinessException(
           'Invalid price precision for pair',
           'INVALID_TICK_SIZE',
-          { tickSize: pairCfg.tickSize },
+          { tickSize },
         );
       }
     }
@@ -113,7 +121,7 @@ export class OrderService {
         if (isBid && dto.price) {
           // Lock value + fee so settlement can consume (value + buyerFee). Resting LIMIT = maker.
           const value = dto.amount * dto.price;
-          const required = value * (1 + pairCfg.makerFeeRate);
+          const required = value * (1 + makerFeeRate);
           await this.balanceService.lockCashForOrder(
             qr,
             account.id,
@@ -135,7 +143,7 @@ export class OrderService {
         // BUY: lock cash = amount * (max price we might pay) * 1.2 buffer (slippage/fees).
         // SELL: lock coin = amount (no price needed).
         if (isBid) {
-          const worstCasePrice = dto.price ?? pairCfg.maxPrice;
+          const worstCasePrice = dto.price ?? maxPrice;
           const required = dto.amount * worstCasePrice * 1.2;
           await this.balanceService.lockCashForOrder(
             qr,
@@ -172,6 +180,12 @@ export class OrderService {
           dto.price ?? 0,
           orderIdStr,
         );
+
+        // Emit orderbook.changed event to notify frontend
+        this.eventEmitter.emit('orderbook.changed', {
+          pairName: dto.pair,
+          timestamp: new Date(),
+        });
       }
 
       this.logger.log(

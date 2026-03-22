@@ -12,13 +12,19 @@ export const ordersKeys = {
 };
 
 /**
- * Fetch orders list with optional filters
+ * Fetch orders list with optional filters and pagination
  */
-export function useOrders(status?: string) {
+export function useOrders(
+  status?: string,
+  isAuthenticated?: boolean,
+  limit?: number,
+  offset?: number
+) {
   return useQuery({
-    queryKey: ordersKeys.list({ status }),
-    queryFn: () => ordersAPI.listOrders({ status }),
+    queryKey: ordersKeys.list({ status, limit, offset }),
+    queryFn: () => ordersAPI.listOrders({ status, limit, offset }),
     staleTime: 5000, // 5 seconds
+    enabled: isAuthenticated ?? false,
   });
 }
 

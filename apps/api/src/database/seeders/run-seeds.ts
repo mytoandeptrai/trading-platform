@@ -24,6 +24,7 @@ async function runSeeds() {
       '001_test_users.sql',
       '002_test_accounts.sql',
       '003_initial_tickers.sql',
+      '004_trading_pairs.sql',
     ];
 
     console.log('\n🌱 Running database seeds...\n');

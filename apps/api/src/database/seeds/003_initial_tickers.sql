@@ -22,58 +22,22 @@ INSERT INTO ticker (
   updated_at
 )
 VALUES
-  -- BTC/USD: Base price $50,000
-  (
-    'BTC/USD',
-    '50000.00000000',      -- last_price
-    '49500.00000000',      -- open_price (24h ago)
-    '50500.00000000',      -- high_price (24h)
-    '49000.00000000',      -- low_price (24h)
-    '500.00000000',        -- price_change (+$500)
-    '1.0101',              -- price_change_percent (+1.01%)
-    '125.50000000',        -- volume (BTC)
-    '6275000.00000000',    -- quote_volume (USD)
-    '49950.00000000',      -- bid_price (best buy)
-    '0.50000000',          -- bid_qty
-    '50050.00000000',      -- ask_price (best sell)
-    '0.30000000',          -- ask_qty
-    42,                    -- trade_count
-    NOW()
-  ),
-  -- ETH/USD: Base price $3,000
-  (
-    'ETH/USD',
-    '3000.00000000',
-    '2950.00000000',
-    '3050.00000000',
-    '2900.00000000',
-    '50.00000000',
-    '1.6949',
-    '850.75000000',
-    '2552250.00000000',
-    '2995.00000000',
-    '5.00000000',
-    '3005.00000000',
-    '3.50000000',
-    156,
-    NOW()
-  ),
   -- BTC/USDT: Base price $50,010
   (
     'BTC/USDT',
-    '50010.00000000',
-    '49510.00000000',
-    '50510.00000000',
-    '49010.00000000',
-    '500.00000000',
-    '1.0101',
-    '98.25000000',
-    '4913122.50000000',
-    '49960.00000000',
-    '0.45000000',
-    '50060.00000000',
-    '0.35000000',
-    38,
+    '50010.00000000',      -- last_price
+    '49510.00000000',      -- open_price (24h ago)
+    '50510.00000000',      -- high_price (24h)
+    '49010.00000000',      -- low_price (24h)
+    '500.00000000',        -- price_change (+$500)
+    '1.0101',              -- price_change_percent (+1.01%)
+    '98.25000000',         -- volume (BTC)
+    '4913122.50000000',    -- quote_volume (USDT)
+    '49960.00000000',      -- bid_price (best buy)
+    '0.45000000',          -- bid_qty
+    '50060.00000000',      -- ask_price (best sell)
+    '0.35000000',          -- ask_qty
+    38,                    -- trade_count
     NOW()
   ),
   -- ETH/USDT: Base price $3,002
@@ -120,7 +84,7 @@ WITH base_pairs AS (
       WHEN p LIKE 'ETH%' THEN 3000.0
       ELSE 1000.0
     END AS base_price
-  FROM unnest(ARRAY['BTC/USD','ETH/USD','BTC/USDT','ETH/USDT']) AS p
+  FROM unnest(ARRAY['BTC/USDT','ETH/USDT']) AS p
 ),
 time_series AS (
   -- Generate 0..1999 minutes ago for each pair (≈ 2,000 candles / pair)

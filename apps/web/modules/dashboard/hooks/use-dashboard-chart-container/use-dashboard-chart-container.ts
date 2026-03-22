@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useChartStore } from '@/stores/chart-store';
-import { createBinanceDatafeed } from '../../configs/datafeed';
+import { useSocket } from '@/contexts/socket-context';
+import { createBackendDatafeed } from '../../configs/datafeed';
 
 type TVWidget = {
   onChartReady: (callback: () => void) => void;
@@ -24,6 +25,7 @@ export function useDashboardChartContainer(scriptLoaded: boolean) {
   const widgetRef = useRef<TVWidget | null>(null);
 
   const { symbol, resolution, setSymbol, setResolution, setTvWidget } = useChartStore();
+  const { socket } = useSocket(); // Get unified socket for real-time updates
 
   const [isReady, setIsReady] = useState(false);
 
@@ -32,7 +34,7 @@ export function useDashboardChartContainer(scriptLoaded: boolean) {
 
     const widget = new window.TradingView.widget({
       symbol,
-      datafeed: createBinanceDatafeed(),
+      datafeed: createBackendDatafeed(socket), // Pass socket to datafeed
       interval: resolution,
       container: containerRef.current,
       library_path: '/static/charting_library/',
@@ -80,7 +82,7 @@ export function useDashboardChartContainer(scriptLoaded: boolean) {
         setTvWidget(null);
       }
     };
-  }, [symbol, resolution, scriptLoaded, setSymbol, setResolution, setTvWidget]);
+  }, [symbol, resolution, scriptLoaded, socket, setSymbol, setResolution, setTvWidget]);
 
   return {
     containerRef,

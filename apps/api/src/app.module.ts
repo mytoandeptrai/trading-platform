@@ -16,6 +16,7 @@ import { RedisModule } from './common/redis/redis.module';
 import { EventsModule } from './events/events.module';
 import { TickerModule } from './ticker/ticker.module';
 import { WebSocketModule } from './websocket/websocket.module';
+import { TradingPairsModule } from './trading-pairs/trading-pairs.module';
 
 @Module({
   imports: [
@@ -66,6 +67,7 @@ import { WebSocketModule } from './websocket/websocket.module';
     MatchingModule,
     TickerModule,
     WebSocketModule,
+    TradingPairsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

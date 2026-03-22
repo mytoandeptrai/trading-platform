@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import type { Ticker } from '@/types/trading';
+import type { Ticker } from '@/apis/markets';
 import { formatPriceNumber, formatNumber, cn } from '@/lib/utils';
 import { Skeleton } from '@repo/ui/components/skeleton';
 
@@ -19,34 +19,34 @@ export function TickerHeader({ ticker, isLoading }: TickerHeaderProps) {
         {!isLoading && ticker && (
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">
-              <span className="text-lg font-semibold">{ticker.symbol}</span>
+              <span className="text-lg font-semibold">{ticker.pairName}</span>
             </div>
 
             <div className="flex flex-col">
-              <div className="text-xl font-bold">{formatPriceNumber(ticker.price)}</div>
+              <div className="text-xl font-bold">{formatPriceNumber(ticker.lastPrice)}</div>
               <div
                 className={cn(
                   'text-sm',
-                  ticker.changePercent24h >= 0 ? 'text-[#00C087]' : 'text-[#F6465D]'
+                  parseFloat(ticker.priceChangePercent) >= 0 ? 'text-[#00C087]' : 'text-[#F6465D]'
                 )}
               >
-                {ticker.changePercent24h >= 0 ? '+' : ''}
-                {ticker.changePercent24h.toFixed(2)}%
+                {parseFloat(ticker.priceChangePercent) >= 0 ? '+' : ''}
+                {parseFloat(ticker.priceChangePercent ?? '0').toFixed(2)}%
               </div>
             </div>
 
             <div className="flex gap-4 text-xs">
               <div className="flex flex-col">
                 <span className="text-gray-400">24h High</span>
-                <span className="text-white">{formatPriceNumber(ticker.high24h)}</span>
+                <span className="text-white">{formatPriceNumber(ticker.highPrice)}</span>
               </div>
               <div className="flex flex-col">
                 <span className="text-gray-400">24h Low</span>
-                <span className="text-white">{formatPriceNumber(ticker.low24h)}</span>
+                <span className="text-white">{formatPriceNumber(ticker.lowPrice)}</span>
               </div>
               <div className="flex flex-col">
                 <span className="text-gray-400">24h Volume</span>
-                <span className="text-white">{formatNumber(ticker.volume24h, 0)}</span>
+                <span className="text-white">{formatNumber(ticker.volume, 0)}</span>
               </div>
             </div>
           </div>

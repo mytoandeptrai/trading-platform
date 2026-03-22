@@ -1,8 +1,10 @@
+import { useAuth } from '@/contexts/auth-context';
 import { useOrders, useCancelOrder } from '@/hooks/use-orders';
 import { toast } from 'sonner';
 
 export function useOrdersListContainer(status?: string) {
-  const { data: orders = [], isLoading } = useOrders(status);
+  const { isAuthenticated } = useAuth();
+  const { data: orders = [], isLoading } = useOrders(status, isAuthenticated);
   const { mutate: cancelOrder } = useCancelOrder();
 
   const handleCancelOrder = (orderId: string) => {

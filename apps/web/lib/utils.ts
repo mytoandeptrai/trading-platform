@@ -29,11 +29,13 @@ export function formatPriceNumber(
   return num.toFixed(decimals);
 }
 
-export function formatNumber(num: number, decimals: number = 2): string {
+export function formatNumber(num: number | string, decimals: number = 2): string {
+  const value = typeof num === 'string' ? parseFloat(num) : num;
+  if (isNaN(value)) return '0';
   return new Intl.NumberFormat('en-US', {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
-  }).format(num);
+  }).format(value);
 }
 
 export function formatPercent(num: number, decimals: number = 2): string {

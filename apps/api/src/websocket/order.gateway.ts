@@ -15,7 +15,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 /**
  * OrderGateway handles real-time order and trade notifications
  * Namespace: /orders
- * Authentication: JWT required
+ * Authentication: Optional (public for trades, private for user orders)
  */
 @WebSocketGateway({
   namespace: '/orders',
@@ -35,55 +35,70 @@ export class OrderGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   /**
    * Handle client connection
-   * Verify JWT token and join user-specific room
+   * Optional authentication - verify JWT if provided, otherwise allow public access
    */
   async handleConnection(client: Socket) {
     try {
-      // Extract token from handshake auth or query
+      // Extract token from handshake auth or query (optional)
       const token =
         client.handshake.auth?.token || client.handshake.query?.token;
 
-      if (!token) {
-        this.logger.warn(`Client ${client.id} connection rejected: No token`);
-        client.disconnect();
-        return;
+      // If token provided, verify and authenticate
+      if (token) {
+        try {
+          const payload = await this.jwtService.verifyAsync(token as string);
+          const userId = payload.sub;
+
+          if (userId) {
+            // Store user info in socket data
+            client.data.userId = userId;
+            client.data.username = payload.username;
+            client.data.authenticated = true;
+
+            // Join user-specific room for private events
+            const userRoom = `user:${userId}`;
+            await client.join(userRoom);
+
+            this.logger.log(
+              `Client ${client.id} connected (authenticated) - User: ${payload.username} (${userId})`,
+            );
+
+            // Send connection success with user info
+            client.emit('connected', {
+              message: 'Connected to order gateway',
+              authenticated: true,
+              userId,
+              username: payload.username,
+            });
+            return;
+          }
+        } catch (error: any) {
+          this.logger.warn(
+            `Client ${client.id} token verification failed: ${error.message}`,
+          );
+          // Don't disconnect, allow public access
+        }
       }
 
-      // Verify JWT token
-      const payload = await this.jwtService.verifyAsync(token as string);
-      const userId = payload.sub;
+      // No token or invalid token - allow public access
+      client.data.authenticated = false;
+      this.logger.log(`Client ${client.id} connected (public)`);
 
-      if (!userId) {
-        this.logger.warn(
-          `Client ${client.id} connection rejected: Invalid token`,
-        );
-        client.disconnect();
-        return;
-      }
-
-      // Store user info in socket data
-      client.data.userId = userId;
-      client.data.username = payload.username;
-
-      // Join user-specific room
-      const userRoom = `user:${userId}`;
-      await client.join(userRoom);
-
-      this.logger.log(
-        `Client ${client.id} connected - User: ${payload.username} (${userId}) - Room: ${userRoom}`,
-      );
-
-      // Send connection success
+      // Send connection success (public)
       client.emit('connected', {
-        message: 'Connected to order gateway',
-        userId,
-        username: payload.username,
+        message: 'Connected to order gateway (public)',
+        authenticated: false,
       });
     } catch (error: any) {
       this.logger.error(
         `Client ${client.id} connection error: ${error.message}`,
       );
-      client.disconnect();
+      // Still allow connection for public data
+      client.data.authenticated = false;
+      client.emit('connected', {
+        message: 'Connected to order gateway (public)',
+        authenticated: false,
+      });
     }
   }
 

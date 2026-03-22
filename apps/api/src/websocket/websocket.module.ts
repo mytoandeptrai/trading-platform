@@ -1,13 +1,14 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { OrderGateway } from './order.gateway';
-import { TickerGateway } from './ticker.gateway';
+import { UnifiedGateway } from './unified.gateway';
 
 /**
  * WebSocketModule provides real-time communication
- * - OrderGateway: Private order/trade events (JWT auth)
- * - TickerGateway: Public ticker/orderbook updates (no auth)
+ * - UnifiedGateway: Single WebSocket for all events (namespace: /ws)
+ *   - Public events: ticker:update, orderbook:update, orderbook:changed
+ *   - Private events: order:matched, trade:executed, order:filled, order:cancelled
+ *   - Optional JWT auth: if token provided, join user room for private events
  */
 @Module({
   imports: [
@@ -25,7 +26,7 @@ import { TickerGateway } from './ticker.gateway';
       },
     }),
   ],
-  providers: [OrderGateway, TickerGateway],
-  exports: [OrderGateway, TickerGateway],
+  providers: [UnifiedGateway],
+  exports: [UnifiedGateway],
 })
 export class WebSocketModule {}

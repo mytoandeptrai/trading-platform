@@ -32,8 +32,8 @@ export function DashboardOrderBookContainer() {
       symbol={symbol}
       bids={orderBook.bids}
       asks={orderBook.asks}
-      currentPrice={ticker.price}
-      changePercent={ticker.changePercent24h}
+      currentPrice={parseFloat(ticker.lastPrice)}
+      changePercent={parseFloat(ticker.priceChangePercent)}
     />
   );
 }

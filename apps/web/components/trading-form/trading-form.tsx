@@ -5,6 +5,27 @@ import { Button } from '@repo/ui/components/button';
 import { Input } from '@repo/ui/components/input';
 import { Label } from '@repo/ui/components/label';
 
+/**
+ * Format and validate numeric input with max 2 decimal places
+ */
+function formatNumericInput(value: string): string {
+  // Remove non-numeric characters except dot
+  let cleaned = value.replace(/[^\d.]/g, '');
+
+  // Only allow one dot
+  const parts = cleaned.split('.');
+  if (parts.length > 2) {
+    cleaned = parts[0] + '.' + parts.slice(1).join('');
+  }
+
+  // Limit to 2 decimal places
+  if (parts.length === 2 && parts[1].length > 2) {
+    cleaned = parts[0] + '.' + parts[1].substring(0, 2);
+  }
+
+  return cleaned;
+}
+
 interface TradingFormProps {
   orderSide: OrderSide;
   orderType: OrderType;
@@ -107,9 +128,10 @@ export function TradingForm({
               <Label className="mb-2 text-xs text-gray-400">Price</Label>
               <div className="relative">
                 <Input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
                   value={price}
-                  onChange={(e) => onPriceChange(e.target.value)}
+                  onChange={(e) => onPriceChange(formatNumericInput(e.target.value))}
                   placeholder="0.00"
                   className="border-gray-800 bg-[#0D0D0D] pr-16 text-white placeholder-gray-600 focus:border-[#00A8E8]"
                 />
@@ -125,9 +147,10 @@ export function TradingForm({
             <Label className="mb-2 text-xs text-gray-400">Amount</Label>
             <div className="relative">
               <Input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 value={amount}
-                onChange={(e) => onAmountChange(e.target.value)}
+                onChange={(e) => onAmountChange(formatNumericInput(e.target.value))}
                 placeholder="0.00"
                 className="border-gray-800 bg-[#0D0D0D] pr-16 text-white placeholder-gray-600 focus:border-[#00A8E8]"
               />

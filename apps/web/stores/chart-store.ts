@@ -12,7 +12,7 @@ export interface ChartStore {
 }
 
 export const useChartStore = create<ChartStore>((set) => ({
-  symbol: 'BTCUSDT',
+  symbol: 'BTC/USDT', // Backend expects format with slash (BTC/USDT, ETH/USDT, etc.)
   setSymbol: (symbol) => set({ symbol }),
 
   resolution: '15',

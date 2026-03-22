@@ -1,15 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsIn, IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 export class OrderbookQueryDto {
   @ApiProperty({
-    example: 'BTC/USD',
-    description: 'Trading pair',
-    enum: ['BTC/USD', 'ETH/USD'],
+    example: 'BTC/USDT',
+    description: 'Trading pair (validated against database)',
+    enum: ['BTC/USDT', 'ETH/USDT'], // Example values, actual validation is done in service
   })
   @IsString()
-  @IsIn(['BTC/USD', 'ETH/USD'])
-  pair: 'BTC/USD' | 'ETH/USD';
+  pair: string;
 
   @ApiPropertyOptional({
     example: 20,

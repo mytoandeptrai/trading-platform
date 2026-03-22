@@ -28,18 +28,13 @@ export function useDashboardTradingFormContainer() {
   const [total, setTotal] = useState('0.00');
   const availableBalance = MOCK_AVAILABLE_BALANCE;
 
-  // Auto-fill market price for LIMIT orders
-  useEffect(() => {
-    if (orderType === 'LIMIT' && !orderPrice && ticker) {
-      setOrderPrice(ticker.price.toString());
-    }
-  }, [orderType, orderPrice, ticker, setOrderPrice]);
+  // Note: Removed auto-fill price to keep initial state empty
 
   // Calculate total
   useEffect(() => {
     const price = orderType === 'LIMIT'
       ? parseFloat(orderPrice) || 0
-      : ticker?.price || 0;
+      : parseFloat(ticker?.lastPrice || '0');
     const amount = parseFloat(orderAmount) || 0;
     const subtotal = price * amount;
     const fee = subtotal * TRADING_FEE_RATE;
@@ -53,8 +48,8 @@ export function useDashboardTradingFormContainer() {
       if (!ticker) return;
 
       const price = orderType === 'LIMIT'
-        ? parseFloat(orderPrice) || ticker.price
-        : ticker.price;
+        ? parseFloat(orderPrice) || parseFloat(ticker.lastPrice)
+        : parseFloat(ticker.lastPrice);
 
       // Calculate max amount considering fee
       const availableForTrade = orderSide === 'BUY'
@@ -62,7 +57,7 @@ export function useDashboardTradingFormContainer() {
         : availableBalance;
 
       const maxAmount = (availableForTrade * (percentage / 100)) / price;
-      setOrderAmount(maxAmount.toFixed(6));
+      setOrderAmount(maxAmount.toFixed(2));
     },
     [orderType, orderPrice, orderSide, ticker, availableBalance, setOrderAmount]
   );

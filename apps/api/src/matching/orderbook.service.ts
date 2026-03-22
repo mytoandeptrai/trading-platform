@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { RedisService } from '../common/redis/redis.service';
-import { getPairConfig } from '../common/constants/pairs.constant';
+import { TradingPairsService } from '../trading-pairs/trading-pairs.service';
 import { BusinessException } from '../common/exceptions/business.exception';
 
 export type OrderbookLevel = {
@@ -10,7 +10,10 @@ export type OrderbookLevel = {
 
 @Injectable()
 export class OrderbookService {
-  constructor(private readonly redisService: RedisService) {}
+  constructor(
+    private readonly redisService: RedisService,
+    private readonly tradingPairsService: TradingPairsService,
+  ) {}
 
   private get redis() {
     return this.redisService.getClient();
@@ -129,10 +132,8 @@ export class OrderbookService {
     bids: OrderbookLevel[];
     asks: OrderbookLevel[];
   }> {
-    const cfg = getPairConfig(pair);
-    if (!cfg) {
-      throw new BusinessException('Pair not found', 'PAIR_NOT_FOUND');
-    }
+    // Validate pair exists in database
+    await this.tradingPairsService.findByName(pair); // Throws NotFoundException if not found
 
     const bidLevelKey = this.getLevelKey(pair, true);
     const askLevelKey = this.getLevelKey(pair, false);
@@ -148,12 +149,14 @@ export class OrderbookService {
       this.redis.zrange(askLevelKey, 0, end, 'WITHSCORES'),
     ]);
 
+    const EPSILON = 1e-10;
     const bids: OrderbookLevel[] = [];
     for (let i = 0; i < bidsRaw.length; i += 2) {
       const priceStr = bidsRaw[i];
       const qtyStr = await this.redis.hget(bidQtyKey, priceStr);
       const quantity = qtyStr ? parseFloat(qtyStr) : 0;
-      if (quantity <= 0) continue;
+      // Filter out zero or very small quantities (floating point errors)
+      if (quantity <= EPSILON) continue;
       bids.push({ price: parseFloat(priceStr), quantity });
     }
 
@@ -162,7 +165,8 @@ export class OrderbookService {
       const priceStr = asksRaw[i];
       const qtyStr = await this.redis.hget(askQtyKey, priceStr);
       const quantity = qtyStr ? parseFloat(qtyStr) : 0;
-      if (quantity <= 0) continue;
+      // Filter out zero or very small quantities (floating point errors)
+      if (quantity <= EPSILON) continue;
       asks.push({ price: parseFloat(priceStr), quantity });
     }
 
@@ -185,7 +189,9 @@ export class OrderbookService {
     const current = currentStr ? parseFloat(currentStr) : 0;
     const next = current + deltaQuantity;
 
-    if (next <= 0) {
+    // Remove level if quantity <= 0 or very small (floating point error)
+    const EPSILON = 1e-10;
+    if (next <= EPSILON) {
       await Promise.all([
         this.redis.hdel(qtyKey, priceStr),
         this.redis.zrem(levelKey, priceStr),

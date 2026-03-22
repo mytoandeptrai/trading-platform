@@ -55,11 +55,47 @@ export class TickerController {
   }
 
   /**
+   * GET /api/ticker/candles - Get candles with time range filtering.
+   * IMPORTANT: This route must come BEFORE @Get(':pair') to avoid route conflicts.
+   */
+  @Get('candles')
+  @ApiOperation({ summary: 'Get candles for a specific trading pair with time range' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns candles for the pair within time range',
+    type: [CandleResponseDto],
+  })
+  async getCandles(
+    @Query() query: CandleQueryDto,
+  ): Promise<CandleResponseDto[]> {
+    const candles = await this.candleService.getCandles(
+      query.pairName,
+      query.interval,
+      query.take,
+      query.startTime,
+      query.endTime,
+    );
+
+    return candles.map((candle) => ({
+      pairName: candle.pairName,
+      openTime: candle.openTime,
+      closeTime: candle.closeTime,
+      open: candle.open,
+      high: candle.high,
+      low: candle.low,
+      close: candle.close,
+      volume: candle.volume,
+      tradesCount: candle.tradesCount,
+      isClosed: candle.isClosed,
+    }));
+  }
+
+  /**
    * GET /api/ticker/:pair - Get ticker for a specific trading pair.
    */
   @Get(':pair')
   @ApiOperation({ summary: 'Get ticker for a specific trading pair' })
-  @ApiParam({ name: 'pair', example: 'BTC/USD' })
+  @ApiParam({ name: 'pair', example: 'BTC/USDT' })
   @ApiResponse({
     status: 200,
     description: 'Returns ticker for the pair',
@@ -92,40 +128,5 @@ export class TickerController {
       tradeCount: ticker.tradeCount,
       updatedAt: ticker.updatedAt,
     };
-  }
-
-  /**
-   * GET /api/ticker/:pair/candles - Get candles for a specific trading pair.
-   */
-  @Get(':pair/candles')
-  @ApiOperation({ summary: 'Get candles for a specific trading pair' })
-  @ApiParam({ name: 'pair', example: 'BTC/USD' })
-  @ApiResponse({
-    status: 200,
-    description: 'Returns candles for the pair',
-    type: [CandleResponseDto],
-  })
-  async getCandles(
-    @Param('pair') pair: string,
-    @Query() query: CandleQueryDto,
-  ): Promise<CandleResponseDto[]> {
-    const candles = await this.candleService.getCandles(
-      pair,
-      query.timeframe,
-      query.limit,
-    );
-
-    return candles.map((candle) => ({
-      pairName: candle.pairName,
-      openTime: candle.openTime,
-      closeTime: candle.closeTime,
-      open: candle.open,
-      high: candle.high,
-      low: candle.low,
-      close: candle.close,
-      volume: candle.volume,
-      tradesCount: candle.tradesCount,
-      isClosed: candle.isClosed,
-    }));
   }
 }

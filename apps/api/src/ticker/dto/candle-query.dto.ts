@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsOptional, IsInt, Min, Max } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsEnum, IsOptional, IsInt, Min, Max, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export enum CandleTimeframe {
@@ -14,23 +14,48 @@ export enum CandleTimeframe {
  */
 export class CandleQueryDto {
   @ApiProperty({
-    enum: CandleTimeframe,
-    example: CandleTimeframe.ONE_MINUTE,
-    description: 'Candle timeframe',
+    example: 'BTC/USDT',
+    description: 'Trading pair name',
   })
-  @IsEnum(CandleTimeframe)
-  timeframe: CandleTimeframe;
+  @IsString()
+  pairName: string;
 
   @ApiProperty({
-    example: 100,
+    enum: CandleTimeframe,
+    example: CandleTimeframe.ONE_MINUTE,
+    description: 'Candle interval',
+  })
+  @IsEnum(CandleTimeframe)
+  interval: CandleTimeframe;
+
+  @ApiPropertyOptional({
+    example: 1710000000,
+    description: 'Start time in seconds (Unix timestamp)',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  startTime?: number;
+
+  @ApiPropertyOptional({
+    example: 1710086400,
+    description: 'End time in seconds (Unix timestamp)',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  endTime?: number;
+
+  @ApiProperty({
+    example: 1000,
     description: 'Number of candles to retrieve',
     required: false,
-    default: 100,
+    default: 1000,
   })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   @Max(1000)
-  limit?: number = 100;
+  take?: number = 1000;
 }

@@ -13,7 +13,7 @@ import {
   BusinessException,
   AccountFrozenException,
 } from '../common/exceptions/business.exception';
-import { getPairConfig } from '../common/constants/pairs.constant';
+import { TradingPairsService } from '../trading-pairs/trading-pairs.service';
 
 @Injectable()
 export class SettlementService {
@@ -21,18 +21,36 @@ export class SettlementService {
     private readonly dataSource: DataSource,
     private readonly redisService: RedisService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly tradingPairsService: TradingPairsService,
   ) {}
+
+  private emitOrderbookUpdate(pairName: string): void {
+    // Simply emit notification that orderbook changed
+    // Frontend will refetch orderbook via API
+    this.eventEmitter.emit('orderbook.changed', {
+      pairName,
+      timestamp: new Date(),
+    });
+  }
 
   private get redis() {
     return this.redisService.getClient();
   }
 
-  private feeRateForOrderType(pairName: string, orderType: string): number {
-    const pairCfg = getPairConfig(pairName);
-    if (!pairCfg) return 0;
-    // LIMIT orders that rest in the book are maker; MARKET orders are taker.
-    // In our simplified POC: maker fee for LIMIT, taker fee for MARKET.
-    return orderType === 'MARKET' ? pairCfg.takerFeeRate : pairCfg.makerFeeRate;
+  private async feeRateForOrderType(
+    pairName: string,
+    orderType: string,
+  ): Promise<number> {
+    try {
+      const pairCfg = await this.tradingPairsService.findByName(pairName);
+      // LIMIT orders that rest in the book are maker; MARKET orders are taker.
+      // In our simplified POC: maker fee for LIMIT, taker fee for MARKET.
+      const takerRate = parseFloat(pairCfg.takerFeeRate);
+      const makerRate = parseFloat(pairCfg.makerFeeRate);
+      return orderType === 'MARKET' ? takerRate : makerRate;
+    } catch {
+      return 0;
+    }
   }
 
   async settleTrade(tradeId: string): Promise<void> {
@@ -89,10 +107,10 @@ export class SettlementService {
         throw new AccountFrozenException(Number(askAccount.id));
       }
 
-      const pairCfg = getPairConfig(trade.pairName);
-      if (!pairCfg) {
-        throw new BusinessException('Pair not found', 'PAIR_NOT_FOUND');
-      }
+      // Validate pair exists
+      const pairCfg = await this.tradingPairsService.findByName(
+        trade.pairName,
+      );
 
       const price = parseFloat(trade.price);
       const qty = parseFloat(trade.quantity);
@@ -100,11 +118,11 @@ export class SettlementService {
 
       // Fee model (confirmed by user): fee charged in quote currency (USD).
       // Maker/Taker: resting LIMIT -> maker, incoming MARKET -> taker (simplified).
-      const buyerRate = this.feeRateForOrderType(
+      const buyerRate = await this.feeRateForOrderType(
         trade.pairName,
         bidOrder.orderType,
       );
-      const sellerRate = this.feeRateForOrderType(
+      const sellerRate = await this.feeRateForOrderType(
         trade.pairName,
         askOrder.orderType,
       );
@@ -313,6 +331,9 @@ export class SettlementService {
           });
         }
       }
+
+      // Emit orderbook.changed to notify frontend to refetch
+      this.emitOrderbookUpdate(trade.pairName);
     } catch (error) {
       await qr.rollbackTransaction();
       // Best effort: mark trade failed (keep locks for manual cleanup as per TDD)
