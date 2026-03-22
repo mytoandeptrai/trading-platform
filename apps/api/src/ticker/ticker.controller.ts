@@ -157,12 +157,12 @@ export class TickerController {
       candle1d: number;
     };
   }> {
-    // Only allow in development mode
-    if (process.env.NODE_ENV !== 'development') {
-      throw new ForbiddenException(
-        'This endpoint is only available in development mode',
-      );
-    }
+    // // Only allow in development mode
+    // if (process.env.NODE_ENV !== 'development') {
+    //   throw new ForbiddenException(
+    //     'This endpoint is only available in development mode',
+    //   );
+    // }
 
     const result = await this.tickerService.clearAllData();
     return result;
