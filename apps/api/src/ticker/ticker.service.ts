@@ -293,4 +293,68 @@ export class TickerService implements OnModuleInit {
   private getCacheKey(pair: string): string {
     return `ticker:${pair}`;
   }
+
+  /**
+   * Clear all seeded ticker and candle data (development only).
+   */
+  async clearAllData(): Promise<{
+    message: string;
+    deletedTickers: number;
+    deletedCandles: {
+      candle1m: number;
+      candle5m: number;
+      candle1h: number;
+      candle1d: number;
+    };
+  }> {
+    this.logger.warn('🗑️  Clearing all ticker and candle data...');
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // Delete from ticker table
+      const tickerResult = await queryRunner.query('DELETE FROM ticker');
+      const deletedTickers = tickerResult[1] || 0;
+
+      // Delete from candle tables
+      const candle1mResult = await queryRunner.query('DELETE FROM candle_1m');
+      const candle5mResult = await queryRunner.query('DELETE FROM candle_5m');
+      const candle1hResult = await queryRunner.query('DELETE FROM candle_1h');
+      const candle1dResult = await queryRunner.query('DELETE FROM candle_1d');
+
+      await queryRunner.commitTransaction();
+
+      // Clear Redis cache
+      const redis = this.redisService.getClient();
+      const keys = await redis.keys('ticker:*');
+      if (keys.length > 0) {
+        await redis.del(...keys);
+      }
+
+      const result = {
+        message: 'All ticker and candle data cleared successfully',
+        deletedTickers,
+        deletedCandles: {
+          candle1m: candle1mResult[1] || 0,
+          candle5m: candle5mResult[1] || 0,
+          candle1h: candle1hResult[1] || 0,
+          candle1d: candle1dResult[1] || 0,
+        },
+      };
+
+      this.logger.log(
+        `✅ Deleted ${deletedTickers} tickers, ${result.deletedCandles.candle1m} 1m candles, ${result.deletedCandles.candle5m} 5m candles, ${result.deletedCandles.candle1h} 1h candles, ${result.deletedCandles.candle1d} 1d candles`,
+      );
+
+      return result;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      this.logger.error('❌ Failed to clear data:', error);
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
 }

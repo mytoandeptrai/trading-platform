@@ -1,9 +1,11 @@
 import {
   Controller,
   Get,
+  Delete,
   Param,
   Query,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { TickerService } from './ticker.service';
@@ -128,5 +130,41 @@ export class TickerController {
       tradeCount: ticker.tradeCount,
       updatedAt: ticker.updatedAt,
     };
+  }
+
+  /**
+   * DELETE /api/ticker/dev/clear-all - Clear all seeded ticker and candle data (dev only).
+   */
+  @Delete('dev/clear-all')
+  @ApiOperation({
+    summary: 'Clear all seeded ticker and candle data (development only)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'All ticker and candle data cleared',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Only allowed in development mode',
+  })
+  async clearAllData(): Promise<{
+    message: string;
+    deletedTickers: number;
+    deletedCandles: {
+      candle1m: number;
+      candle5m: number;
+      candle1h: number;
+      candle1d: number;
+    };
+  }> {
+    // Only allow in development mode
+    if (process.env.NODE_ENV !== 'development') {
+      throw new ForbiddenException(
+        'This endpoint is only available in development mode',
+      );
+    }
+
+    const result = await this.tickerService.clearAllData();
+    return result;
   }
 }

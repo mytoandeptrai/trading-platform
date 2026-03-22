@@ -7,13 +7,34 @@ import * as dotenv from 'dotenv';
 dotenv.config({ path: path.join(__dirname, '../../../.env') });
 
 async function runSeeds() {
-  const client = new Client({
+  const sslEnabled = process.env.DB_SSL_ENABLED === 'true';
+
+  const clientConfig: any = {
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT || '5432'),
     user: process.env.DB_USERNAME || 'trading',
     password: process.env.DB_PASSWORD || 'trading_dev',
     database: process.env.DB_NAME || 'tradingengine',
-  });
+  };
+
+  // Add SSL config if enabled (for Aiven, Render, etc.)
+  if (sslEnabled) {
+    const caCertPath = process.env.DB_SSL_CA_PATH;
+    if (caCertPath) {
+      const fullPath = path.join(__dirname, '../../../', caCertPath);
+      const ca = fs.readFileSync(fullPath, 'utf8');
+      clientConfig.ssl = {
+        rejectUnauthorized: true,
+        ca,
+      };
+      console.log('🔐 SSL enabled with CA certificate');
+    } else {
+      clientConfig.ssl = { rejectUnauthorized: false };
+      console.log('🔐 SSL enabled without CA certificate');
+    }
+  }
+
+  const client = new Client(clientConfig);
 
   try {
     console.log('🔌 Connecting to database...');
